@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Anex Chat</string>
+  <string name="to_preserve_privacy_simplex_has_background_service_instead_of_push_notifications_it_uses_a_few_pc_battery"><![CDATA[To improve privacy, <b>Anex Chat runs in background</b> instead of using push notifications.]]></string>
+  <string name="system_restricted_background_desc">Anex Chat can\'t run in background. You will receive the notifications only when the app is running.</string>
+  <string name="simplex_service_notification_title">Anex Chat service</string>
+  <string name="ntf_channel_messages">Anex Chat messages</string>
+  <string name="ntf_channel_calls">Anex Chat calls</string>
+  <string name="la_notice_title_simplex_lock">App Lock</string>
+  <string name="la_notice_to_protect_your_information_turn_on_simplex_lock_you_will_be_prompted_to_complete_authentication_before_this_feature_is_enabled">To protect your information, turn on App Lock.\nYou will be prompted to complete authentication before this feature is enabled.</string>
+  <string name="la_lock_mode">App Lock mode</string>
+  <string name="auth_simplex_lock_turned_on">App Lock turned on</string>
+  <string name="auth_enable_simplex_lock">Enable App Lock</string>
+  <string name="auth_disable_simplex_lock">Disable App Lock</string>
+  <string name="auth_device_authentication_is_not_enabled_you_can_turn_on_in_settings_once_enabled">Device authentication is not enabled. You can turn on App Lock via Settings, once you enable device authentication.</string>
+  <string name="auth_device_authentication_is_disabled_turning_off">Device authentication is disabled. Turning off App Lock.</string>
+  <string name="lock_not_enabled">App Lock not enabled!</string>
+  <string name="you_can_turn_on_lock">You can turn on App Lock via Settings.</string>
+  <string name="thank_you_for_installing_simplex">Thank you for installing Anex Chat!</string>
+  <string name="image_descr_simplex_logo">Anex Chat Logo</string>
+  <string name="about_simplex_chat">About Anex Chat</string>
+  <string name="chat_lock">App Lock</string>
+  <string name="email_invite_subject">Let\'s talk in Anex Chat</string>
+  <string name="email_invite_body">Hi!\nConnect to me via Anex Chat: %s</string>
+  <string name="about_simplex">About Anex Chat</string>
+  <string name="open_simplex_chat_to_accept_call">Open Anex Chat to accept call</string>
+</resources>

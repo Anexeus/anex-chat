@@ -12,7 +12,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "chat.simplex.app"
+        applicationId = "com.anexeus.chat"
         namespace = "chat.simplex.app"
         minSdk = 26
         targetSdk = 36
@@ -30,8 +30,7 @@ android {
                 cppFlags("")
             }
         }
-        manifestPlaceholders["app_name"] = "@string/app_name"
-        manifestPlaceholders["provider_authorities"] = "chat.simplex.app.provider"
+        manifestPlaceholders["app_name"] = "@string/anex_app_name"
         manifestPlaceholders["extract_native_libs"] = rootProject.extra["compression.level"] as Int != 0
     }
 
@@ -55,8 +54,6 @@ android {
             applicationIdSuffix = rootProject.extra["application_id.suffix"] as String
             isDebuggable = rootProject.extra["enable_debuggable"] as Boolean
             manifestPlaceholders["app_name"] = rootProject.extra["app.name"] as String
-            // Provider can"t be the same for different apps on the same device
-            manifestPlaceholders["provider_authorities"] = "chat.simplex.app${rootProject.extra["application_id.suffix"]}.provider"
         }
         release {
             isMinifyEnabled = false

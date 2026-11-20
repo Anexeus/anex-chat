@@ -1,4 +1,5 @@
 <resources>
+  <string name="anex_app_name" translatable="false">Anex Chat</string>
   <string name="app_name">SimpleX</string>
 
   <string name="thousand_abbreviation">k</string>
