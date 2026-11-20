@@ -1,4 +1,7 @@
 <resources>
+  <string name="anex_about_credit">Anex Chat is based on SimpleX Chat (AGPL-3.0).</string>
+  <string name="anex_source">Anex Chat source code</string>
+  <string name="anex_badges">Badges</string>
   <string name="anex_app_name" translatable="false">Anex Chat</string>
   <string name="app_name">SimpleX</string>
 

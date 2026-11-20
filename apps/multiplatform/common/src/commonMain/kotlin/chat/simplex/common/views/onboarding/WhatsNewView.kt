@@ -1033,6 +1033,7 @@ private val versionDescriptions: List<VersionDescription> = listOf(
 
 @Composable
 private fun SupporterBadgeWhatsNew(modalManager: ModalManager) {
+  if (appPlatform.isAndroid) return
   Column(Modifier.padding(bottom = 12.dp)) {
     Row(
       verticalAlignment = Alignment.CenterVertically,
@@ -1122,9 +1123,9 @@ private val crowdfundingLayout = if (appPlatform.isDesktop)
 else
   CrowdfundingLayout(Dp.Unspecified, RoundedCornerShape(CROWDFUNDING_IMAGE_CORNER_RADIUS), null)
 
-// Google Play policy restricts promoting investments, so Play builds only show it in the US
 @Composable
 fun crowdfundingAvailable(): Boolean {
+  if (appPlatform.isAndroid) return false
   if (!platform.androidIsPlayStoreBuild) return true
   if (androidPlayStoreCountry.value == null) {
     LaunchedEffect(Unit) {

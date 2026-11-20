@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import chat.simplex.common.platform.appPlatform
 import chat.simplex.common.ui.theme.SimpleXTheme
 import chat.simplex.common.views.helpers.annotatedStringResource
 import chat.simplex.common.views.onboarding.ReadableTextWithLink
@@ -28,7 +29,9 @@ fun ChatHelpView(addContact: (() -> Unit)? = null) {
     verticalArrangement = Arrangement.spacedBy(10.dp)
   ) {
     Text(stringResource(MR.strings.thank_you_for_installing_simplex), lineHeight = 22.sp)
-    ReadableTextWithLink(MR.strings.you_can_connect_to_simplex_chat_founder, simplexTeamUri, simplexLink = true)
+    if (!appPlatform.isAndroid) {
+      ReadableTextWithLink(MR.strings.you_can_connect_to_simplex_chat_founder, simplexTeamUri, simplexLink = true)
+    }
     Column(
       Modifier.padding(top = 24.dp),
       verticalArrangement = Arrangement.spacedBy(10.dp)

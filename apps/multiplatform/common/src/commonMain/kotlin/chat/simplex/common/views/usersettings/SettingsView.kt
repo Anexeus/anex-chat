@@ -32,6 +32,7 @@ import chat.simplex.common.views.badges.currentShownBadge
 import chat.simplex.common.views.database.DatabaseView
 import chat.simplex.common.views.helpers.*
 import chat.simplex.common.views.migration.MigrateFromDeviceView
+import chat.simplex.common.views.onboarding.ANEX_SOURCE_URL
 import chat.simplex.common.views.onboarding.GetStakeView
 import chat.simplex.common.views.onboarding.SimpleXInfo
 import chat.simplex.common.views.onboarding.WhatsNewView
@@ -111,7 +112,7 @@ fun SettingsLayout(
     SectionDividerSpaced()
 
     val (badgeLabel, badgeBenefits) = when (currentShownBadge()?.badgeType) {
-      null -> MR.strings.badges_support_simplex_title to MR.strings.v7_1_supporter_badge_descr
+      null -> (if (appPlatform.isAndroid) MR.strings.anex_badges else MR.strings.badges_support_simplex_title) to MR.strings.v7_1_supporter_badge_descr
       is BadgeType.Legend -> MR.strings.badges_your_legend_badge to MR.strings.badges_legend_benefits
       is BadgeType.Supporter, is BadgeType.Investor, is BadgeType.Unknown -> MR.strings.badges_your_badge to MR.strings.badges_supporter_benefits
     }
@@ -125,7 +126,7 @@ fun SettingsLayout(
         Text(stringResource(badgeLabel))
       }
     }
-    SectionTextFooter(stringResource(badgeBenefits))
+    if (!appPlatform.isAndroid || currentShownBadge() != null) SectionTextFooter(stringResource(badgeBenefits))
     SectionDividerSpaced()
 
     SectionView(stringResource(MR.strings.advanced_settings)) {
@@ -171,23 +172,26 @@ fun HelpAndSupportView(
     }
     SectionDividerSpaced()
 
-    SectionView(stringResource(MR.strings.settings_section_title_contact)) {
-      if (!chatModel.desktopNoUserNoRemote) {
-        SettingsActionItem(painterResource(MR.images.ic_bigtop_updates), stringResource(MR.strings.follow_simplex_network_news), { uriHandler.openVerifiedSimplexUri(simplexNewsUri) }, textColor = MaterialTheme.colors.primary, disabled = stopped)
-        SettingsActionItem(painterResource(MR.images.ic_tag), stringResource(MR.strings.chat_with_the_founder), { uriHandler.openVerifiedSimplexUri(simplexTeamUri) }, textColor = MaterialTheme.colors.primary, disabled = stopped)
+    if (appPlatform.isAndroid) {
+      SectionView {
+        SettingsActionItem(painterResource(MR.images.ic_github), stringResource(MR.strings.anex_source), { uriHandler.openExternalLink(ANEX_SOURCE_URL) })
       }
-      SettingsActionItem(painterResource(MR.images.ic_mail), stringResource(MR.strings.send_us_an_email), { uriHandler.openUriCatching("mailto:chat@simplex.chat") }, textColor = MaterialTheme.colors.primary)
-    }
-    SectionDividerSpaced()
+    } else {
+      SectionView(stringResource(MR.strings.settings_section_title_contact)) {
+        if (!chatModel.desktopNoUserNoRemote) {
+          SettingsActionItem(painterResource(MR.images.ic_bigtop_updates), stringResource(MR.strings.follow_simplex_network_news), { uriHandler.openVerifiedSimplexUri(simplexNewsUri) }, textColor = MaterialTheme.colors.primary, disabled = stopped)
+          SettingsActionItem(painterResource(MR.images.ic_tag), stringResource(MR.strings.chat_with_the_founder), { uriHandler.openVerifiedSimplexUri(simplexTeamUri) }, textColor = MaterialTheme.colors.primary, disabled = stopped)
+        }
+        SettingsActionItem(painterResource(MR.images.ic_mail), stringResource(MR.strings.send_us_an_email), { uriHandler.openUriCatching("mailto:chat@simplex.chat") }, textColor = MaterialTheme.colors.primary)
+      }
+      SectionDividerSpaced()
 
-    SectionView(stringResource(MR.strings.settings_section_title_support_project)) {
-      if (!platform.androidIsPlayStoreBuild) {
-        ContributeItem(uriHandler)
+      SectionView(stringResource(MR.strings.settings_section_title_support_project)) {
+        if (!platform.androidIsPlayStoreBuild) {
+          ContributeItem(uriHandler)
+        }
+        StarOnGithubItem(uriHandler)
       }
-      if (appPlatform.isAndroid) {
-        RateAppItem(uriHandler)
-      }
-      StarOnGithubItem(uriHandler)
     }
     SectionBottomSpacer()
   }

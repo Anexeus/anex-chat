@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.TextLayoutResult
 import dev.icerock.moko.resources.compose.painterResource
@@ -39,6 +40,8 @@ import chat.simplex.res.*
 import dev.icerock.moko.resources.StringResource
 import kotlin.math.ceil
 import kotlin.math.floor
+
+const val ANEX_SOURCE_URL = "https://github.com/Anexeus/anex-chat"
 
 @Composable
 fun SimpleXInfo(chatModel: ChatModel, onboarding: Boolean = true) {
@@ -111,7 +114,11 @@ fun SimpleXInfoLayout(
   val modifier = Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = DEFAULT_ONBOARDING_HORIZONTAL_PADDING)
   Column(modifier.padding(top = if (topBar) barHeight else 0.dp, bottom = if (bottomBar) barHeight else 0.dp), horizontalAlignment = Alignment.CenterHorizontally) {
     Box(Modifier.padding(top = DEFAULT_PADDING * 2).widthIn(max = if (appPlatform.isAndroid) 185.dp else 160.dp), contentAlignment = Alignment.Center) {
-      SimpleXLogo()
+      if (appPlatform.isAndroid) {
+        Text(stringResource(MR.strings.anex_app_name), style = MaterialTheme.typography.h2, textAlign = TextAlign.Center)
+      } else {
+        SimpleXLogo()
+      }
     }
     OnboardingShrinkingLayout(
       modifier = Modifier.fillMaxSize(),
@@ -143,7 +150,7 @@ fun SimpleXInfoLayout(
           modifier = Modifier.padding(top = 14.dp)
         )
         Text(
-          stringResource(MR.strings.onboarding_first_network),
+          stringResource(if (appPlatform.isAndroid && onboardingStage == null) MR.strings.anex_about_credit else MR.strings.onboarding_first_network),
           style = MaterialTheme.typography.body2,
           color = MaterialTheme.colors.secondary,
           textAlign = TextAlign.Center,
@@ -156,8 +163,13 @@ fun SimpleXInfoLayout(
       Column(Modifier.widthIn(max = if (appPlatform.isAndroid) 450.dp else 1000.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (onboardingStage != null) {
           OnboardingActionButton(user, onboardingStage)
+        } else if (appPlatform.isAndroid) {
+          val uriHandler = LocalUriHandler.current
+          TextButton(onClick = { uriHandler.openExternalLink(ANEX_SOURCE_URL) }) {
+            Text(stringResource(MR.strings.anex_source))
+          }
         }
-        TextButtonBelowOnboardingButton(stringResource(MR.strings.why_simplex_is_built), icon = painterResource(MR.images.ic_info), onClick = {
+        TextButtonBelowOnboardingButton(stringResource(if (appPlatform.isAndroid) MR.strings.how_it_works else MR.strings.why_simplex_is_built), icon = painterResource(MR.images.ic_info), onClick = {
           ModalManager.fullscreen.showModal { HowItWorks(user, onboardingStage) }
         })
       }
