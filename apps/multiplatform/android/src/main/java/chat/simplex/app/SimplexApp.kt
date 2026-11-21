@@ -115,7 +115,6 @@ class SimplexApp: Application(), LifecycleEventObserver {
                 }
               }.onFailure { Log.e(TAG, it.stackTraceToString()) }
             }
-            BadgeStore.presentUnfinished()
           }
         }
         Lifecycle.Event.ON_RESUME -> {

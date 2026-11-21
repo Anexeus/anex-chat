@@ -281,7 +281,7 @@ fun ChatItemInfoView(chatRh: Long?, ci: ChatItem, ciInfo: ChatItemInfo, devTools
       if (file?.fileExpires != null) {
         val expiresRes = if (file.expired) MR.strings.info_row_file_expired else MR.strings.info_row_file_expires
         InfoRow(stringResource(expiresRes), localTimestamp(file.fileExpires))
-        if (noShownBadge()) {
+        if (!appPlatform.isAndroid && noShownBadge()) {
           SectionItemView(::openBadgesView) {
             Text(stringResource(MR.strings.badges_larger_files_longer), color = MaterialTheme.colors.primary)
           }

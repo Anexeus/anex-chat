@@ -280,6 +280,7 @@ fun isBadgeLinkIssuing(): Boolean =
   isBadgeLinkOpen() && badgeLinkStep?.value == BadgeLinkStep.Issuing
 
 fun openBadgeLink(rhId: Long?, codeText: String) {
+  if (appPlatform.isAndroid) return
   val code = parseBadgeCode(codeText)
     ?: return showCannotRedeemAlert(generalGetString(MR.strings.badges_error_invalid_code))
   // opens over the chat list, as iOS dismisses every sheet before a link

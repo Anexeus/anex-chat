@@ -192,25 +192,30 @@ fun ModalData.WhatsNewView(updatedConditions: Boolean = false, viaSettings: Bool
         .padding(horizontal = DEFAULT_PADDING),
       verticalArrangement = Arrangement.spacedBy(DEFAULT_PADDING.times(0.75f))
     ) {
-      AppBarTitle(String.format(generalGetString(MR.strings.new_in_version), v.version), withPadding = false, bottomPadding = DEFAULT_PADDING)
-
       val modalManager = if (viaSettings) ModalManager.start else ModalManager.center
 
-      v.features.forEach { feature ->
-        when (feature) {
-          is VersionFeature.FeatureDescription -> {
-            if (feature.show) {
-              featureDescription(feature.icon, feature.titleId, feature.descrId, feature.link, feature.learnMoreLink, feature.subfeatures)
+      if (appPlatform.isAndroid) {
+        AppBarTitle(stringResource(MR.strings.operator_updated_conditions), withPadding = false, bottomPadding = DEFAULT_PADDING)
+      } else {
+        AppBarTitle(String.format(generalGetString(MR.strings.new_in_version), v.version), withPadding = false, bottomPadding = DEFAULT_PADDING)
+
+
+        v.features.forEach { feature ->
+          when (feature) {
+            is VersionFeature.FeatureDescription -> {
+              if (feature.show) {
+                featureDescription(feature.icon, feature.titleId, feature.descrId, feature.link, feature.learnMoreLink, feature.subfeatures)
+              }
+            }
+            is VersionFeature.FeatureView -> {
+              feature.view(modalManager)
             }
           }
-          is VersionFeature.FeatureView -> {
-            feature.view(modalManager)
-          }
         }
-      }
 
-      if (v.post != null) {
-        ReadMoreButton(v.post)
+        if (v.post != null) {
+          ReadMoreButton(v.post)
+        }
       }
 
       if (updatedConditions) {
@@ -260,7 +265,7 @@ fun ModalData.WhatsNewView(updatedConditions: Boolean = false, viaSettings: Bool
 
       Spacer(Modifier.fillMaxHeight().weight(1f))
 
-      pagination()
+      if (!appPlatform.isAndroid) pagination()
     }
   }
 }

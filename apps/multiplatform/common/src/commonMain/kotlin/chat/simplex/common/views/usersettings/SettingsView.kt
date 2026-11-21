@@ -111,23 +111,25 @@ fun SettingsLayout(
     }
     SectionDividerSpaced()
 
-    val (badgeLabel, badgeBenefits) = when (currentShownBadge()?.badgeType) {
-      null -> (if (appPlatform.isAndroid) MR.strings.anex_badges else MR.strings.badges_support_simplex_title) to MR.strings.v7_1_supporter_badge_descr
-      is BadgeType.Legend -> MR.strings.badges_your_legend_badge to MR.strings.badges_legend_benefits
-      is BadgeType.Supporter, is BadgeType.Investor, is BadgeType.Unknown -> MR.strings.badges_your_badge to MR.strings.badges_supporter_benefits
-    }
-    SectionView {
-      // Direct showModal (no settings / cardScreen flags) — settings-style card chrome would render
-      // a gray top bar / back button that badges views don't want (they have their own inline titles).
-      SectionItemView(click = { ModalManager.start.showCustomModal(id = ModalViewId.BADGES) { close -> BadgesView(ModalManager.start, close) } }) {
-        val badgeType = chatModel.currentUser.value?.profile?.localBadge?.badge?.badgeType ?: BadgeType.Supporter
-        Image(painterResource(badgeImage(badgeType)), stringResource(badgeLabel), Modifier.size(24.dp))
-        TextIconSpaced()
-        Text(stringResource(badgeLabel))
+    if (!appPlatform.isAndroid) {
+      val (badgeLabel, badgeBenefits) = when (currentShownBadge()?.badgeType) {
+        null -> MR.strings.badges_support_simplex_title to MR.strings.v7_1_supporter_badge_descr
+        is BadgeType.Legend -> MR.strings.badges_your_legend_badge to MR.strings.badges_legend_benefits
+        is BadgeType.Supporter, is BadgeType.Investor, is BadgeType.Unknown -> MR.strings.badges_your_badge to MR.strings.badges_supporter_benefits
       }
+      SectionView {
+        // Direct showModal (no settings / cardScreen flags) — settings-style card chrome would render
+        // a gray top bar / back button that badges views don't want (they have their own inline titles).
+        SectionItemView(click = { ModalManager.start.showCustomModal(id = ModalViewId.BADGES) { close -> BadgesView(ModalManager.start, close) } }) {
+          val badgeType = chatModel.currentUser.value?.profile?.localBadge?.badge?.badgeType ?: BadgeType.Supporter
+          Image(painterResource(badgeImage(badgeType)), stringResource(badgeLabel), Modifier.size(24.dp))
+          TextIconSpaced()
+          Text(stringResource(badgeLabel))
+        }
+      }
+      SectionTextFooter(stringResource(badgeBenefits))
+      SectionDividerSpaced()
     }
-    if (!appPlatform.isAndroid || currentShownBadge() != null) SectionTextFooter(stringResource(badgeBenefits))
-    SectionDividerSpaced()
 
     SectionView(stringResource(MR.strings.advanced_settings)) {
       SettingsActionItem(painterResource(MR.images.ic_wifi_tethering), stringResource(MR.strings.network_and_servers), showCustomModal { _, close -> NetworkAndServersView(close) }, disabled = stopped)
@@ -167,7 +169,9 @@ fun HelpAndSupportView(
 
     SectionView(stringResource(MR.strings.settings_section_title_help)) {
       SettingsActionItem(painterResource(MR.images.ic_help), stringResource(MR.strings.how_to_use_simplex_chat), showModal { HelpView(userDisplayName) }, disabled = stopped)
-      SettingsActionItem(painterResource(MR.images.ic_add), stringResource(MR.strings.whats_new), showCustomModal { _, close -> WhatsNewView(viaSettings = true, close = close) }, disabled = stopped)
+      if (!appPlatform.isAndroid) {
+        SettingsActionItem(painterResource(MR.images.ic_add), stringResource(MR.strings.whats_new), showCustomModal { _, close -> WhatsNewView(viaSettings = true, close = close) }, disabled = stopped)
+      }
       SettingsActionItem(painterResource(MR.images.ic_info), stringResource(MR.strings.about_simplex_chat), showModal { SimpleXInfo(it, onboarding = false) })
     }
     SectionDividerSpaced()

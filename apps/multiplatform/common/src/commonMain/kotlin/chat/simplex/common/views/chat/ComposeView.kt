@@ -326,7 +326,7 @@ private fun isWebmUri(uri: URI): Boolean = getFileName(uri)?.lowercase()?.endsWi
 fun showLargeFileAlert(fileSize: Long, incognito: Boolean, senderProfile: LocalProfile?) {
   val title = generalGetString(MR.strings.large_file)
   val text = largeFileMessage(fileSize, incognito, expiredBadgeReason(fileSize, senderProfile))
-  if (!incognito && fileSize <= MAX_FILE_SIZE_XFTP_LEGEND && noShownBadge()) {
+  if (!appPlatform.isAndroid && !incognito && fileSize <= MAX_FILE_SIZE_XFTP_LEGEND && noShownBadge()) {
     AlertManager.shared.showAlertDialog(
       title = title,
       text = text,

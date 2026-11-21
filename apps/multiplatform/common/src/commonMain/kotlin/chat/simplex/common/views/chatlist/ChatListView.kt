@@ -240,11 +240,11 @@ fun ChatListView(chatModel: ChatModel, userPickerState: MutableStateFlow<Animate
 
   LaunchedEffect(Unit) {
     if (noticesShown) return@LaunchedEffect
-    val showWhatsNew = shouldShowWhatsNew(chatModel)
+    val showWhatsNew = !appPlatform.isAndroid && shouldShowWhatsNew(chatModel)
     val showUpdatedConditions = chatModel.conditions.value.conditionsAction?.shouldShowNotice ?: false
     if (showWhatsNew || showUpdatedConditions) {
       // Requested here, so that the country is known by the time the modal opens
-      platform.androidLoadPlayStoreCountry()
+      if (!appPlatform.isAndroid) platform.androidLoadPlayStoreCountry()
       delay(1000L)
       noticesShown = true
       ModalManager.center.showCustomModal { close -> WhatsNewView(close = close, updatedConditions = showUpdatedConditions) }
@@ -830,7 +830,7 @@ private fun openAppLink(rhId: Long?, uri: String) {
   // a path, such as simplexchat:badge/code/X, is an unknown link on both platforms
   val parsed = uriCreateOrNull(uri) ?: return
   val path = parsed.path ?: ""
-  if (path.startsWith(badgeLinkPath)) {
+  if (!appPlatform.isAndroid && path.startsWith(badgeLinkPath)) {
     openBadgeLink(rhId, path.removePrefix(badgeLinkPath))
   } else {
     AlertManager.shared.showAlertMsg(title = generalGetString(MR.strings.app_link_not_supported))
@@ -1098,7 +1098,7 @@ private fun BoxScope.ChatList(searchText: MutableState<TextFieldValue>, listStat
       }
     }
     // one slot: an alert about a badge the user paid for outranks the pitch to get one
-    val alert = bannerBadgeAlert()
+    val alert = if (appPlatform.isAndroid) null else bannerBadgeAlert()
     if (alert != null) {
       item {
         SideEffect { chatModel.chatListBanner = ChatListBanner.BadgeAlert }

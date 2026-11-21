@@ -57,6 +57,7 @@ fun shouldShowOnboarding(): Boolean {
 
 // the current profile's badge alert, if it is a kind the chat list has a banner for
 fun bannerBadgeAlert(): BadgeAlert? {
+  if (appPlatform.isAndroid) return null
   val alert = BadgeModel.alert.value
   if (alert == null || !BadgeModel.isCurrent(chatModel.remoteHostId(), chatModel.currentUser.value?.userId)) return null
   return when (alert.kind) {

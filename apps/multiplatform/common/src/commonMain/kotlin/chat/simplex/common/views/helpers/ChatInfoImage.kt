@@ -170,7 +170,7 @@ fun NameWithBadge(
 @Composable
 fun RowScope.NameBadge(badge: LocalBadge?, fontSize: TextUnit = LocalTextStyle.current.fontSize) {
   // a badge that expired over a month ago (ExpiredOld) is not shown
-  if (badge == null || badge.status == BadgeStatus.ExpiredOld) return
+  if (appPlatform.isAndroid || badge == null || badge.status == BadgeStatus.ExpiredOld) return
   val height = with(LocalDensity.current) { (if (fontSize.isSpecified) fontSize else 14.sp).toDp() } * fontCapHeightRatio
   BadgeGlyph(
     badge,
@@ -220,6 +220,7 @@ fun badgeTypeName(t: BadgeType): String = when (t) {
 }
 
 fun showBadgeInfoAlert(name: String, badge: LocalBadge, uriHandler: UriHandler) {
+  if (appPlatform.isAndroid) return
   // a verified badge's type is signed and can't be faked, so the real (possibly unknown) type name is the title
   val title = badgeTypeName(badge.badge.badgeType)
   when {

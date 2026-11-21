@@ -2353,7 +2353,7 @@ fun BoxScope.ChatItemsList(
           .background(MaterialTheme.appColors.receivedMessage)
       ) {
         ChatInfoImage(chatInfo, size = alertProfileImageSize, iconColor = MaterialTheme.colors.secondaryVariant.mixWith(MaterialTheme.colors.onBackground, 0.97f))
-        val bannerBadge = chatInfo.nameBadge
+        val bannerBadge = chatInfo.nameBadge.takeUnless { appPlatform.isAndroid }
         val uriHandler = LocalUriHandler.current
         Text(
           buildAnnotatedString {

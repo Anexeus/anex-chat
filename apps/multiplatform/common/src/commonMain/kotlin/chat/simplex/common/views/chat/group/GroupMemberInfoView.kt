@@ -761,7 +761,7 @@ fun GroupMemberInfoHeader(member: GroupMember) {
         appendInlineContent(id = "shieldIcon")
       }
       append(displayName)
-      if (badge != null) {
+      if (!appPlatform.isAndroid && badge != null) {
         append(" ")
         appendInlineContent(id = "nameBadge")
       }
@@ -777,7 +777,7 @@ fun GroupMemberInfoHeader(member: GroupMember) {
           Icon(painterResource(MR.images.ic_verified_user), null, tint = MaterialTheme.colors.secondary)
         }
       )
-      if (badge != null) {
+      if (!appPlatform.isAndroid && badge != null) {
         put("nameBadge", nameBadgeInline(badge, nameFontSize) { showBadgeInfoAlert(displayName, badge, uriHandler) })
       }
     }

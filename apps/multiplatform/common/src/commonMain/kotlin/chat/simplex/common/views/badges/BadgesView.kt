@@ -9,6 +9,7 @@ import chat.simplex.common.platform.chatModel
 import chat.simplex.common.views.helpers.ModalManager
 import chat.simplex.common.views.helpers.ModalView
 import chat.simplex.common.views.helpers.ModalViewId
+import chat.simplex.common.platform.appPlatform
 import chat.simplex.res.*
 
 @Composable
@@ -54,5 +55,6 @@ fun CloseWhenSupportGivesWay(modalManager: ModalManager, unwindToDepth: Int) {
 
 // ModalManager.end, not start: every caller is in the chat, which on desktop is the right pane
 fun openBadgesView() {
+  if (appPlatform.isAndroid) return
   ModalManager.end.showCustomModal(id = ModalViewId.BADGES) { close -> BadgesView(ModalManager.end, close) }
 }

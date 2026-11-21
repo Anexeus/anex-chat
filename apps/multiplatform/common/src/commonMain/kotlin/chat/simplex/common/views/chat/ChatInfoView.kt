@@ -723,7 +723,7 @@ fun ChatInfoHeader(cInfo: ChatInfo, contact: Contact) {
         appendInlineContent(id = "shieldIcon")
       }
       append(displayName)
-      if (badge != null) {
+      if (!appPlatform.isAndroid && badge != null) {
         append(" ")
         appendInlineContent(id = "nameBadge")
       }
@@ -739,7 +739,7 @@ fun ChatInfoHeader(cInfo: ChatInfo, contact: Contact) {
           Icon(painterResource(MR.images.ic_verified_user), null, tint = MaterialTheme.colors.secondary)
         }
       )
-      if (badge != null) {
+      if (!appPlatform.isAndroid && badge != null) {
         put("nameBadge", nameBadgeInline(badge, nameFontSize) { showBadgeInfoAlert(displayName, badge, uriHandler) })
       }
     }

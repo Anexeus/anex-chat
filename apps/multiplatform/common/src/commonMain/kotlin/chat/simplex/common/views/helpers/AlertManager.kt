@@ -323,16 +323,17 @@ class AlertManager {
                 profileImage()
                 Spacer(Modifier.height(DEFAULT_PADDING_HALF))
                 val nameFontSize = MaterialTheme.typography.h4.fontSize
+                val visibleBadge = profileBadge.takeUnless { appPlatform.isAndroid }
                 Text(
                   buildAnnotatedString {
                     append(profileName)
-                    if (profileBadge != null) {
+                    if (visibleBadge != null) {
                       append(" ")
                       appendInlineContent(id = "nameBadge")
                     }
                   },
                   inlineContent =
-                    if (profileBadge != null) mapOf("nameBadge" to nameBadgeInline(profileBadge, nameFontSize)) else emptyMap(),
+                    if (visibleBadge != null) mapOf("nameBadge" to nameBadgeInline(visibleBadge, nameFontSize)) else emptyMap(),
                   textAlign = TextAlign.Center,
                   style = MaterialTheme.typography.h4,
                   lineHeight = 20.sp,
