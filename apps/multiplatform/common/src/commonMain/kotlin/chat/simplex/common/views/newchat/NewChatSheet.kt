@@ -104,7 +104,12 @@ fun chatContactType(chat: Chat): ContactType {
 }
 
 private fun filterContactTypes(c: List<Chat>, contactTypes: List<ContactType>): List<Chat> {
-  return c.filter { chat -> contactTypes.contains(chatContactType(chat)) }
+  return c.filter { chat ->
+    val contact = (chat.chatInfo as? ChatInfo.Direct)?.contact
+    // The core inserts this promotional card into new profiles. Keep actual conversations.
+    val teamCard = contact?.isContactCard == true && contact.profile.displayName == "Ask SimpleX Team"
+    (!appPlatform.isAndroid || !teamCard) && chatContactType(chat) in contactTypes
+  }
 }
 
 @Composable

@@ -549,8 +549,15 @@ private val hiddenSecretStyle = SpanStyle(color = Color.Transparent)
 private val secretTile: ImageBitmap? by lazy { MR.images.vertical_logo.toComposeImageBitmap() }
 
 private fun ContentDrawScope.drawSecretPattern(ranges: List<IntRange>, layout: TextLayoutResult?) {
-  val tile = secretTile ?: return
   if (layout == null) return
+  if (appPlatform.isAndroid) {
+    ranges.forEach { range ->
+      val path = layout.getPathForRange(range.first.coerceIn(0, layout.layoutInput.text.length), range.last.coerceIn(0, layout.layoutInput.text.length))
+      clipPath(path) { drawRect(Color.Gray, alpha = 0.45f) }
+    }
+    return
+  }
+  val tile = secretTile ?: return
   val brush = ShaderBrush(ImageShader(tile, TileMode.Repeated, TileMode.Repeated))
   val tileScale = 8.dp.toPx() / tile.width
   val saturation = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.65f) })

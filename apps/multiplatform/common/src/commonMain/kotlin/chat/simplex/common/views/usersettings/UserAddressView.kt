@@ -287,7 +287,7 @@ private fun UserAddressLayout(
     if (!onboarding) {
       AppBarTitle(stringResource(MR.strings.simplex_address), hostDevice(user?.remoteHostId))
     }
-    if (BuildConfigCommon.SIMPLEX_ASSETS && userAddress != null) {
+    if (!appPlatform.isAndroid && BuildConfigCommon.SIMPLEX_ASSETS && userAddress != null) {
       Image(
         painterResource(if (isInDarkTheme()) {
           if (onboarding) MR.images.simplex_address_light else MR.images.simplex_address_small_light

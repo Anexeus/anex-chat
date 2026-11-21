@@ -71,7 +71,9 @@ object AppearanceScope {
       Row(Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
         val size = 60
         Box(Modifier.offset(x = -(size / 12).dp)) {
-          if (!image.isNullOrEmpty()) {
+          if (appPlatform.isAndroid) {
+            ProfileImage(size.dp, image)
+          } else if (!image.isNullOrEmpty()) {
             ProfileImage(size.dp, image, MR.images.ic_simplex_light, color = Color.Unspecified)
           } else {
             ProfileImage(size.dp, if (isInDarkTheme()) MR.images.ic_simplex_light else MR.images.ic_simplex_dark)

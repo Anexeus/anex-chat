@@ -11,6 +11,7 @@ import chat.simplex.common.views.helpers.AppBarTitle
 import chat.simplex.common.views.helpers.KeyChangeEffect
 import chat.simplex.common.views.onboarding.ReadableText
 import chat.simplex.common.views.onboarding.ReadableTextWithLink
+import chat.simplex.common.platform.appPlatform
 import chat.simplex.res.*
 
 @Composable
@@ -19,7 +20,7 @@ fun AddContactLearnMore(close: () -> Unit) {
     AppBarTitle(stringResource(MR.strings.one_time_link), withPadding = false)
     ReadableText(MR.strings.scan_qr_to_connect_to_contact)
     ReadableText(MR.strings.if_you_cant_meet_in_person)
-    ReadableTextWithLink(MR.strings.read_more_in_user_guide_with_link, "https://simplex.chat/docs/guide/readme.html#connect-to-friends")
+    if (!appPlatform.isAndroid) ReadableTextWithLink(MR.strings.read_more_in_user_guide_with_link, "https://simplex.chat/docs/guide/readme.html#connect-to-friends")
   }
   KeyChangeEffect(chatModel.chatId.value) {
     close()

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import chat.simplex.common.model.ChatModel
 import chat.simplex.common.platform.ColumnWithScrollBar
+import chat.simplex.common.platform.appPlatform
 import chat.simplex.common.ui.theme.*
 import chat.simplex.common.views.call.parseRTCIceServers
 import chat.simplex.common.views.helpers.*
@@ -146,7 +147,7 @@ fun RTCServersLayout(
               }
             }
             Column(horizontalAlignment = Alignment.End) {
-              howToButton()
+              if (!appPlatform.isAndroid) howToButton()
             }
           }
         } else {
@@ -183,7 +184,7 @@ fun RTCServersLayout(
               )
             }
             Column(horizontalAlignment = Alignment.End) {
-              howToButton()
+              if (!appPlatform.isAndroid) howToButton()
             }
           }
         }

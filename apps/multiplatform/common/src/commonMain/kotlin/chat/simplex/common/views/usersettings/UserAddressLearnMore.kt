@@ -20,6 +20,7 @@ import dev.icerock.moko.resources.compose.stringResource
 import chat.simplex.common.views.helpers.*
 import chat.simplex.common.views.newchat.*
 import chat.simplex.common.views.onboarding.*
+import chat.simplex.common.platform.appPlatform
 import chat.simplex.res.*
 import dev.icerock.moko.resources.compose.painterResource
 
@@ -52,7 +53,7 @@ fun UserAddressLearnMore(showCreateAddressButton: Boolean = false) {
       }
       ReadableText(MR.strings.simplex_address_and_1_time_links_are_safe_to_share)
       ReadableText(MR.strings.to_protect_against_your_link_replaced_compare_codes)
-      ReadableTextWithLink(MR.strings.read_more_in_user_guide_with_link, "https://simplex.chat/docs/guide/making-connections.html#comparison-of-1-time-invitation-links-and-simplex-contact-addresses")
+      if (!appPlatform.isAndroid) ReadableTextWithLink(MR.strings.read_more_in_user_guide_with_link, "https://simplex.chat/docs/guide/making-connections.html#comparison-of-1-time-invitation-links-and-simplex-contact-addresses")
     }
 
     if (showCreateAddressButton) {
