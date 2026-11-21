@@ -46,7 +46,7 @@ fun OnboardingConditionsView(chatModel: ChatModel) {
 
   val serverOperators = remember { derivedStateOf { chatModel.conditions.value.serverOperators } }
   val selectedOperatorIds = remember {
-    mutableStateOf(if (appPlatform.isAndroid) OnboardingSharedState.selectedOperatorIds else {
+    mutableStateOf(if (appPlatform.isAndroid) emptySet() else {
       OnboardingSharedState.selectedOperatorIds.ifEmpty {
         serverOperators.value.filter { it.enabled }.map { it.operatorId }.toSet()
       }
@@ -113,7 +113,7 @@ fun OnboardingConditionsView(chatModel: ChatModel) {
                       ModalManager.fullscreen.showModal(endButtons = { ConditionsLinkButton() }) {
                         SimpleConditionsView(rhId = null) {
                           ModalManager.fullscreen.closeModal()
-                          acceptConditions(selectedOperatorIds.value)
+                          acceptConditions(emptySet())
                         }
                       }
                     }

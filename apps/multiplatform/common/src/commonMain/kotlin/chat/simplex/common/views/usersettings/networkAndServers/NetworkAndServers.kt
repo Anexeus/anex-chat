@@ -210,7 +210,7 @@ fun ModalData.NetworkAndServersView(closeNetworkAndServers: () -> Unit) {
 
     AppBarTitle(stringResource(MR.strings.network_and_servers))
     // TODO: Review this and socks.
-    if (!chatModel.desktopNoUserNoRemote) {
+    if (!appPlatform.isAndroid && !chatModel.desktopNoUserNoRemote) {
       SectionView(generalGetString(MR.strings.network_preset_servers_title)) {
         userServers.value.forEachIndexed { index, srv ->
           srv.operator?.let { ServerOperatorRow(index, it, currUserServers, userServers, serverErrors, serverWarnings, currentRemoteHost?.remoteHostId) }
@@ -233,28 +233,28 @@ fun ModalData.NetworkAndServersView(closeNetworkAndServers: () -> Unit) {
       val nullOperatorIndex = userServers.value.indexOfFirst { it.operator == null }
 
       if (nullOperatorIndex != -1) {
-        SectionItemView({
-          ModalManager.start.showModal {
-            YourServersView(
-              userServers = userServers,
-              serverErrors = serverErrors,
-              serverWarnings = serverWarnings,
-              operatorIndex = nullOperatorIndex,
-              rhId = currentRemoteHost?.remoteHostId
-            )
-          }
-        }) {
-          Icon(
-            painterResource(MR.images.ic_dns),
-            stringResource(MR.strings.your_servers),
-            tint = MaterialTheme.colors.secondary
-          )
-          TextIconSpaced()
-          Text(stringResource(MR.strings.your_servers), color = MaterialTheme.colors.onBackground)
+        val groups = if (appPlatform.isAndroid) listOf(ServerList.Anex, ServerList.Custom) else listOf(ServerList.All)
+        groups.forEach { group ->
+          SectionItemView({
+            ModalManager.start.showModal {
+              YourServersView(
+                userServers = userServers,
+                serverErrors = serverErrors,
+                serverWarnings = serverWarnings,
+                operatorIndex = nullOperatorIndex,
+                rhId = currentRemoteHost?.remoteHostId,
+                serverList = group
+              )
+            }
+          }) {
+            Icon(painterResource(MR.images.ic_dns), contentDescription = null, tint = MaterialTheme.colors.secondary)
+            TextIconSpaced()
+            Text(stringResource(group.title), color = MaterialTheme.colors.onBackground)
 
-          if (currUserServers.value.getOrNull(nullOperatorIndex) != userServers.value.getOrNull(nullOperatorIndex)) {
-            Spacer(Modifier.weight(1f))
-            UnsavedChangesIndicator()
+            if (currUserServers.value.getOrNull(nullOperatorIndex) != userServers.value.getOrNull(nullOperatorIndex)) {
+              Spacer(Modifier.weight(1f))
+              UnsavedChangesIndicator()
+            }
           }
         }
       }

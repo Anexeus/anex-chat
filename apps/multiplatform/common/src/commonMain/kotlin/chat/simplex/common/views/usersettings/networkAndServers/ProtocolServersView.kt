@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import chat.simplex.common.ui.theme.*
 import androidx.compose.ui.platform.LocalUriHandler
+import dev.icerock.moko.resources.StringResource
 import dev.icerock.moko.resources.compose.painterResource
 import dev.icerock.moko.resources.compose.stringResource
 import androidx.compose.ui.text.*
@@ -28,13 +29,20 @@ import chat.simplex.res.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+enum class ServerList(val title: StringResource) {
+  All(MR.strings.your_servers),
+  Anex(MR.strings.anex_operator_name),
+  Custom(MR.strings.your_servers)
+}
+
 @Composable
 fun ModalData.YourServersView(
   userServers: MutableState<List<UserOperatorServers>>,
   serverErrors: MutableState<List<UserServersError>>,
   serverWarnings: MutableState<List<UserServersWarning>>,
   operatorIndex: Int,
-  rhId: Long?
+  rhId: Long?,
+  serverList: ServerList = ServerList.All
 ) {
   val testing = remember { mutableStateOf(false) }
   val currentUser = remember { chatModel.currentUser }.value
@@ -49,7 +57,7 @@ fun ModalData.YourServersView(
 
   Box {
     ColumnWithScrollBar {
-      AppBarTitle(stringResource(MR.strings.your_servers))
+      AppBarTitle(stringResource(serverList.title))
       YourServersViewLayout(
         scope,
         userServers,
@@ -61,7 +69,8 @@ fun ModalData.YourServersView(
         },
         currentUser,
         rhId,
-        testing
+        testing,
+        serverList
       )
     }
 
@@ -81,15 +90,28 @@ fun YourServersViewLayout(
   navigateToProtocolView: (Int, UserServer, ServerProtocol) -> Unit,
   currentUser: User?,
   rhId: Long?,
-  testing: MutableState<Boolean>
+  testing: MutableState<Boolean>,
+  serverList: ServerList
 ) {
+  val defaults = remember(serverList) {
+    if (serverList == ServerList.All) emptySet() else readAnexServerDefaults().mapNotNull(::decodeServerAddress).toSet()
+  }
+  val group = userServers.value[operatorIndex]
+  fun visible(servers: List<UserServer>): List<IndexedValue<UserServer>> =
+    servers.withIndex().filter { (_, server) ->
+      if (serverList == ServerList.All) true
+      else (decodeServerAddress(server.server) in defaults) == (serverList == ServerList.Anex)
+    }
+  val smpServers = visible(group.smpServers)
+  val xftpServers = visible(group.xftpServers)
+  val chatRelays = if (serverList == ServerList.Anex) emptyList() else group.chatRelays
   val duplicateHosts = findDuplicateHosts(serverErrors.value)
 
   Column {
-    if (userServers.value[operatorIndex].chatRelays.any { !it.deleted }) {
+    if (chatRelays.any { !it.deleted }) {
       val duplicateRelayAddresses = findDuplicateRelayAddresses(serverErrors.value)
       SectionView(generalGetString(MR.strings.chat_relays)) {
-        userServers.value[operatorIndex].chatRelays.forEachIndexed { i, relay ->
+        chatRelays.forEachIndexed { i, relay ->
           if (relay.deleted) return@forEachIndexed
           ChatRelayViewLink(relay, duplicateRelayAddresses) {
             navigateToChatRelayView(userServers, serverErrors, serverWarnings, operatorIndex, i, relay, rhId)
@@ -99,11 +121,11 @@ fun YourServersViewLayout(
       SectionTextFooter(generalGetString(MR.strings.chat_relays_forward_messages_in_channels))
     }
 
-    if (userServers.value[operatorIndex].smpServers.any { !it.deleted }) {
+    if (smpServers.any { !it.value.deleted }) {
       SectionDividerSpaced()
       SectionView(generalGetString(MR.strings.message_servers)) {
-        userServers.value[operatorIndex].smpServers.forEachIndexed { i, server  ->
-          if (server.deleted) return@forEachIndexed
+        smpServers.forEach { (i, server) ->
+          if (server.deleted) return@forEach
           SectionItemView({ navigateToProtocolView(i, server, ServerProtocol.SMP) }) {
             ProtocolServerViewLink(
               srv = server,
@@ -133,11 +155,11 @@ fun YourServersViewLayout(
       }
     }
 
-    if (userServers.value[operatorIndex].xftpServers.any { !it.deleted }) {
+    if (xftpServers.any { !it.value.deleted }) {
       SectionDividerSpaced()
       SectionView(generalGetString(MR.strings.media_and_file_servers)) {
-        userServers.value[operatorIndex].xftpServers.forEachIndexed { i, server ->
-          if (server.deleted) return@forEachIndexed
+        xftpServers.forEach { (i, server) ->
+          if (server.deleted) return@forEach
           SectionItemView({ navigateToProtocolView(i, server, ServerProtocol.XFTP) }) {
             ProtocolServerViewLink(
               srv = server,
@@ -168,14 +190,14 @@ fun YourServersViewLayout(
     }
 
     if (
-      userServers.value[operatorIndex].smpServers.any { !it.deleted } ||
-      userServers.value[operatorIndex].xftpServers.any { !it.deleted } ||
-      userServers.value[operatorIndex].chatRelays.any { !it.deleted }
+      smpServers.any { !it.value.deleted } ||
+      xftpServers.any { !it.value.deleted } ||
+      chatRelays.any { !it.deleted }
       ) {
       SectionDividerSpaced()
     }
 
-    SectionView {
+    if (serverList != ServerList.Anex) SectionView {
       SettingsActionItem(
         painterResource(MR.images.ic_add),
         stringResource(MR.strings.smp_servers_add),
@@ -200,25 +222,29 @@ fun YourServersViewLayout(
     SectionView {
       TestServersButton(
         testing = testing,
-        smpServers = userServers.value[operatorIndex].smpServers,
-        xftpServers = userServers.value[operatorIndex].xftpServers,
-        chatRelays = userServers.value[operatorIndex].chatRelays,
+        smpServers = smpServers.map { it.value },
+        xftpServers = xftpServers.map { it.value },
+        chatRelays = chatRelays,
         onUpdate = { p, l ->
           when (p) {
             ServerProtocol.XFTP -> userServers.value = userServers.value.toMutableList().apply {
               this[operatorIndex] = this[operatorIndex].copy(
-                xftpServers = l
+                xftpServers = this[operatorIndex].xftpServers.toMutableList().apply {
+                  xftpServers.zip(l).forEach { (row, tested) -> this[row.index] = tested }
+                }
               )
             }
 
             ServerProtocol.SMP -> userServers.value = userServers.value.toMutableList().apply {
               this[operatorIndex] = this[operatorIndex].copy(
-                smpServers = l
+                smpServers = this[operatorIndex].smpServers.toMutableList().apply {
+                  smpServers.zip(l).forEach { (row, tested) -> this[row.index] = tested }
+                }
               )
             }
           }
         },
-        onUpdateRelays = { relays ->
+        onUpdateRelays = if (serverList == ServerList.Anex) null else { relays ->
           userServers.value = userServers.value.toMutableList().apply {
             this[operatorIndex] = this[operatorIndex].copy(
               chatRelays = relays
@@ -227,7 +253,7 @@ fun YourServersViewLayout(
         }
       )
 
-      HowToButton()
+      if (!appPlatform.isAndroid) HowToButton()
     }
     SectionBottomSpacer()
   }

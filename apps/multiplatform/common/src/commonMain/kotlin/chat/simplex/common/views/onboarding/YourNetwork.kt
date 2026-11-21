@@ -97,11 +97,7 @@ fun YourNetworkView(chatModel: ChatModel) {
                 horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
               ) {
-                ConfigureRoutersButton(serverOperators, selectedOperatorIds) {
-                  ModalManager.fullscreen.showCustomModal { close ->
-                    ChooseServerOperators(serverOperators, selectedOperatorIds, close)
-                  }
-                }
+                Text(stringResource(MR.strings.anex_onboarding_servers), style = MaterialTheme.typography.body2)
                 ConfigureNotificationsButton(notificationMode) {
                   ModalManager.fullscreen.showModalCloseable { close ->
                     SetNotificationsMode(notificationMode, close)

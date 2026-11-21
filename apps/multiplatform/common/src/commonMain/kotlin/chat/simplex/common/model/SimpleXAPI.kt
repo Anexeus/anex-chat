@@ -742,7 +742,7 @@ object ChatController {
         applyAnexServerDefaults(user.userId)
       }
       appPrefs.chatStopped.set(false)
-      withLongRunningApi { BadgeStore.presentUnfinished() }
+      if (!appPlatform.isAndroid) withLongRunningApi { BadgeStore.presentUnfinished() }
       if (appPrefs.shouldDeleteDatabaseBackups.get()) {
         deleteDatabaseBackups()
         appPrefs.shouldDeleteDatabaseBackups.set(false)
@@ -812,7 +812,7 @@ object ChatController {
     chatModel.users.clear()
     chatModel.users.addAll(users)
     getUserChatData(rhId, keepingChatId = keepingChatId)
-    withLongRunningApi { BadgeStore.presentUnfinished() }
+    if (!appPlatform.isAndroid) withLongRunningApi { BadgeStore.presentUnfinished() }
     val invitation = chatModel.callInvitations.values.firstOrNull { inv -> inv.user.userId == toUserId }
     if (invitation != null && currentUser != null) {
       chatModel.callManager.reportNewIncomingCall(invitation.copy(user = currentUser))
@@ -1474,14 +1474,11 @@ object ChatController {
     val firstProfile = users.users.size == 1
     val servers = sendCmd(null, CC.ApiGetUserServers(userId), log = false).result as? CR.UserServers ?: return failed("reading server settings")
 
-    fun parse(address: String): ServerAddress? =
-      json.decodeFromString<ParsedServerAddress>(chatParseServer(address)).serverAddress
-
-    val smpAddress = parse(smp)?.takeIf { it.valid } ?: return failed("parsing SMP address")
-    val xftpAddress = parse(xftp)?.takeIf { it.valid } ?: return failed("parsing XFTP address")
+    val smpAddress = decodeServerAddress(smp)?.takeIf { it.valid } ?: return failed("parsing SMP address")
+    val xftpAddress = decodeServerAddress(xftp)?.takeIf { it.valid } ?: return failed("parsing XFTP address")
 
     fun withDefault(existing: List<UserServer>, address: String, parsed: ServerAddress): List<UserServer> {
-      val index = existing.indexOfFirst { parse(it.server) == parsed }
+      val index = existing.indexOfFirst { decodeServerAddress(it.server) == parsed }
       if (index < 0) return existing + UserServer.empty.copy(server = address, enabled = true)
       return existing.mapIndexed { i, server ->
         if (i == index) server.copy(enabled = true, deleted = false) else server
@@ -5394,6 +5391,9 @@ data class ServerAddress(
     }
   }
 }
+
+internal fun decodeServerAddress(address: String): ServerAddress? =
+  runCatching { json.decodeFromString<ParsedServerAddress>(chatParseServer(address)).serverAddress }.getOrNull()
 
 @Serializable
 data class ParsedServerAddress (
