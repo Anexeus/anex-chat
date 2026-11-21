@@ -22,12 +22,14 @@ import chat.simplex.res.*
 @Composable
 fun ContactConnectionView(contactConnection: PendingContactConnection) {
   Row {
-    Box(Modifier.size(72.dp * fontSizeSqrtMultiplier), contentAlignment = Alignment.Center) {
-      ProfileImage(size = 54.dp * fontSizeSqrtMultiplier, null, if (contactConnection.initiated) MR.images.ic_add_link else MR.images.ic_link)
+    ChatListAvatar { size ->
+      Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+        ProfileImage(size * 0.75f, null, if (contactConnection.initiated) MR.images.ic_add_link else MR.images.ic_link)
+      }
     }
     Column(
       modifier = Modifier
-        .padding(start = 8.dp / fontSizeSqrtMultiplier, end = 8.sp.toDp())
+        .padding(start = if (LocalAnexChatRow.current) chatListAvatarGap else 8.dp / fontSizeSqrtMultiplier, end = 8.sp.toDp())
         .weight(1F)
     ) {
       Text(

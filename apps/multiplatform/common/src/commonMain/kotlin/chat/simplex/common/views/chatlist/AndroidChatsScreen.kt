@@ -27,13 +27,30 @@ import chat.simplex.common.views.chat.item.ItemAction
 import chat.simplex.common.views.helpers.*
 import chat.simplex.common.views.newchat.*
 import chat.simplex.common.views.usersettings.*
-import chat.simplex.res.MR
+import chat.simplex.res.*
 import dev.icerock.moko.resources.compose.painterResource
 import dev.icerock.moko.resources.compose.stringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 internal val LocalAnexChatRow = staticCompositionLocalOf { false }
+
+internal val chatListAvatarSize: Dp
+  @Composable get() = (if (LocalAnexChatRow.current) 54.dp else 72.dp) * fontSizeSqrtMultiplier
+
+internal val chatListAvatarGap: Dp
+  @Composable get() = if (LocalAnexChatRow.current) 12.dp else 8.dp
+
+@Composable
+internal fun ChatListAvatar(content: @Composable (Dp) -> Unit) {
+  val size = chatListAvatarSize
+  if (LocalAnexChatRow.current) {
+    Box(Modifier.size(size).clip(CircleShape).background(MaterialTheme.colors.onBackground.copy(alpha = 0.055f)),
+      contentAlignment = Alignment.Center) { content(size) }
+  } else {
+    content(size)
+  }
+}
 
 @Composable
 internal fun AndroidChatsScreen(
@@ -98,7 +115,7 @@ internal fun AndroidChatsScreen(
       }
       // Fade the scrolling content before it passes under the floating controls.
       if (keyboard != KeyboardState.Opened) {
-        AnimatedVisibility(barVisible, Modifier.align(Alignment.BottomCenter),
+        androidx.compose.animation.AnimatedVisibility(barVisible, Modifier.align(Alignment.BottomCenter),
           enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
           Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(
             theme.background.copy(alpha = 0f), theme.background.copy(alpha = 0.32f), theme.background.copy(alpha = 0.85f)
@@ -152,7 +169,10 @@ private fun ChatsHeader(glass: Boolean, stopped: Boolean, running: Boolean, open
         }
         if (running) {
           Row(verticalAlignment = Alignment.CenterVertically) {
-            val open = { more.value = false; showSummary() }
+            val open = {
+              more.value = false
+              showSummary()
+            }
             SubscriptionStatusIndicator(open)
             Text(stringResource(MR.strings.settings_section_title_network_connection),
               Modifier.weight(1f).clickable(onClick = open).padding(vertical = 12.dp))

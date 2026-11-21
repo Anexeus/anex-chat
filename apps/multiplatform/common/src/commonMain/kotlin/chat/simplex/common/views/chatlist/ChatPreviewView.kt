@@ -403,12 +403,12 @@ fun ChatPreviewView(
   Box(contentAlignment = Alignment.Center) {
     Row {
       Box(contentAlignment = Alignment.BottomEnd) {
-        ChatInfoImage(cInfo, size = 72.dp * fontSizeSqrtMultiplier)
+        ChatListAvatar { size -> ChatInfoImage(cInfo, size = size) }
         Box(Modifier.padding(end = 6.sp.toDp(), bottom = 6.sp.toDp())) {
           chatPreviewImageOverlayIcon()
         }
       }
-      Spacer(Modifier.width(8.dp))
+      Spacer(Modifier.width(chatListAvatarGap))
       Column(Modifier.weight(1f)) {
         Row {
           Box(Modifier.weight(1f)) {
@@ -418,7 +418,7 @@ fun ChatPreviewView(
           val ts = getTimestampText(chat.chatItems.lastOrNull()?.takeIf { it.content !is CIContent.ChatBanner }?.meta?.itemTs ?: chat.chatInfo.chatTs)
           ChatListTimestampView(ts)
         }
-        Row(Modifier.heightIn(min = 46.sp.toDp()).fillMaxWidth()) {
+        Row(Modifier.heightIn(min = (if (LocalAnexChatRow.current) 37.sp else 46.sp).toDp()).fillMaxWidth()) {
           Row(Modifier.padding(top = 3.sp.toDp()).weight(1f)) {
             val activeVoicePreview: MutableState<(ActiveVoicePreview)?> = remember(chat.id) { mutableStateOf(null) }
             val chat = activeVoicePreview.value?.chat ?: chat

@@ -21,10 +21,10 @@ import chat.simplex.res.*
 @Composable
 fun ContactRequestView(contactRequest: ChatInfo.ContactRequest) {
   Row {
-    ChatInfoImage(contactRequest, size = 72.dp * fontSizeSqrtMultiplier)
+    ChatListAvatar { size -> ChatInfoImage(contactRequest, size = size) }
     Column(
       modifier = Modifier
-        .padding(start = 8.dp, end = 8.sp.toDp())
+        .padding(start = chatListAvatarGap, end = 8.sp.toDp())
         .weight(1F)
     ) {
       NameWithBadge(
