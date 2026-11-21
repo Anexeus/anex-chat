@@ -36,10 +36,10 @@ internal object AnexGlass {
   val verticalInset = 6.dp
   val blurRadius = 18.dp
 
-  fun fill(light: Boolean) = if (light) Color(0xDCF5F8FD) else Color(0xD4222935)
-  fun rim(light: Boolean) = if (light) Color(0xECFFFFFF) else Color(0x59D8E8FF)
-  fun edge(light: Boolean) = if (light) Color(0x3C6C8098) else Color(0x2EADBED6)
-  fun sheen(light: Boolean) = if (light) Color(0xC7FFFFFF) else Color(0x23C9DFFF)
+  fun fill(light: Boolean) = if (light) Color(0xB9F1F1F3) else Color(0xA62A2A2D)
+  fun rim(light: Boolean) = if (light) Color(0xBFFFFFFF) else Color(0x60FFFFFF)
+  fun edge(light: Boolean) = if (light) Color(0x35555658) else Color(0x24FFFFFF)
+  fun sheen(light: Boolean) = if (light) Color(0x50FFFFFF) else Color(0x15FFFFFF)
   fun lens(light: Boolean) = if (light) Color(0x845AC0FF) else Color(0x8C35618C)
 }
 
@@ -86,10 +86,20 @@ internal fun AnexGlassSurface(
   shape: Shape = AnexGlass.pill,
   backdrop: GlassBackdrop? = null,
   lens: Boolean = false,
+  solid: Boolean = false,
+  tint: Color = Color.Unspecified,
   content: @Composable BoxScope.() -> Unit
 ) {
   val light = MaterialTheme.colors.isLight
   val background = MaterialTheme.colors.background
+  val fill = if (tint != Color.Unspecified) tint else AnexGlass.fill(light)
+  if (solid) {
+    val opaque = if (tint != Color.Unspecified) tint.copy(alpha = 1f)
+      else if (light) Color(0xFFF0F0F2) else Color(0xFF28282B)
+    Box(modifier.shadow(3.dp, shape).clip(shape).background(opaque)
+      .border(1.dp, MaterialTheme.colors.onBackground.copy(alpha = 0.32f), shape), content = content)
+    return
+  }
   val rim = Brush.verticalGradient(listOf(AnexGlass.rim(light), AnexGlass.edge(light)))
   val highlight = Brush.verticalGradient(
     0f to AnexGlass.sheen(light),
@@ -105,7 +115,7 @@ internal fun AnexGlassSurface(
     backdrop?.run { FrostedLayer(background) }
     Box(
       Modifier.matchParentSize()
-        .background(if (lens) AnexGlass.lens(light) else AnexGlass.fill(light))
+        .background(if (lens) AnexGlass.lens(light) else fill)
         .background(highlight)
     )
     content()
