@@ -8,6 +8,53 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+abstract class GenerateAnexServerAsset : DefaultTask() {
+    @get:InputFile
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val config: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val assetsDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val file = config.orNull?.asFile
+            ?: throw GradleException("Missing anex-servers.local.properties. Put it in the repository root.")
+        val values = mutableMapOf<String, String>()
+        for (line in file.readLines()) {
+            val separator = line.indexOf('=')
+            if (separator < 0) continue
+            val key = line.substring(0, separator).trim().removePrefix("\uFEFF")
+            if (key == "ANEX_SMP" || key == "ANEX_XFTP") {
+                if (values.put(key, line.substring(separator + 1).trim()) != null) {
+                    throw GradleException("Duplicate $key in anex-servers.local.properties.")
+                }
+            }
+        }
+        val addresses = listOf("ANEX_SMP" to "smp://", "ANEX_XFTP" to "xftp://").map { (key, prefix) ->
+            val value = values[key]?.takeIf { it.isNotBlank() }
+                ?: throw GradleException("Missing or empty $key in anex-servers.local.properties.")
+            if (!value.startsWith(prefix) || value.length == prefix.length || value.any(Char::isWhitespace)) {
+                throw GradleException("Invalid $key in anex-servers.local.properties. Expected a $prefix address.")
+            }
+            value
+        }
+        val output = assetsDir.file("anex-server-defaults.txt").get().asFile
+        output.parentFile.mkdirs()
+        output.writeText(addresses.joinToString("\n", postfix = "\n"))
+    }
+}
+
+val anexServerConfig = rootProject.layout.projectDirectory.file("../../anex-servers.local.properties")
+androidComponents.onVariants { variant ->
+    val task = tasks.register<GenerateAnexServerAsset>("generateAnexServerAsset" + variant.name.replaceFirstChar(Char::uppercaseChar)) {
+        if (anexServerConfig.asFile.isFile) config.set(anexServerConfig)
+        assetsDir.set(layout.buildDirectory.dir("generated/anex-server-assets/" + variant.name))
+    }
+    variant.sources.assets?.addGeneratedSourceDirectory(task, GenerateAnexServerAsset::assetsDir)
+}
+
 android {
     compileSdk = 36
 
