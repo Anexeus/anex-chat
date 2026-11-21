@@ -32,7 +32,9 @@ internal actual fun systemPrefersSolidGlass(): Boolean {
         enabled { Settings.Secure.getInt(resolver, "high_text_contrast_enabled", 0) }
       val increasedContrast = Build.VERSION.SDK_INT >= 34 && (uiMode?.contrast ?: 0f) > 0f
       val reducedTransparency = reduceTransparency.any { key ->
-        enabled { Settings.Secure.getInt(resolver, key, 0) } || enabled { Settings.System.getInt(resolver, key, 0) }
+        enabled { Settings.Global.getInt(resolver, key, 0) } ||
+          enabled { Settings.Secure.getInt(resolver, key, 0) } ||
+          enabled { Settings.System.getInt(resolver, key, 0) }
       }
       solid = highContrastText || increasedContrast || reducedTransparency ||
         enabled { Settings.Global.getInt(resolver, "disable_window_blurs", 0) }
@@ -45,7 +47,7 @@ internal actual fun systemPrefersSolidGlass(): Boolean {
       Settings.Secure.getUriFor("high_text_contrast_enabled"),
       Settings.Global.getUriFor("disable_window_blurs")
     ) + reduceTransparency.flatMap { key ->
-      listOf(Settings.Secure.getUriFor(key), Settings.System.getUriFor(key))
+      listOf(Settings.Global.getUriFor(key), Settings.Secure.getUriFor(key), Settings.System.getUriFor(key))
     }
     settings.forEach { uri ->
       try {
