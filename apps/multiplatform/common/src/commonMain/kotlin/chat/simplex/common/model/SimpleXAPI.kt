@@ -710,7 +710,7 @@ object ChatController {
     userId
   }
 
-  suspend fun startChat(user: User) {
+  suspend fun startChat(user: User, configureAnexServers: Boolean = false) {
     Log.d(TAG, "user: $user")
     try {
       apiSetNetworkConfig(getNetCfg())
@@ -738,6 +738,9 @@ object ChatController {
         Log.d(TAG, "startChat: running")
       }
       apiStartChat()
+      if (configureAnexServers && appPlatform.isAndroid) {
+        applyAnexServerDefaults(user.userId)
+      }
       appPrefs.chatStopped.set(false)
       withLongRunningApi { BadgeStore.presentUnfinished() }
       if (appPrefs.shouldDeleteDatabaseBackups.get()) {
@@ -1032,14 +1035,9 @@ object ChatController {
     return null
   }
 
-  suspend fun apiCreateActiveUser(rh: Long?, p: Profile?, pastTimestamp: Boolean = false, ctrl: ChatCtrl? = null, useAnexDefaults: Boolean = false): User? {
+  suspend fun apiCreateActiveUser(rh: Long?, p: Profile?, pastTimestamp: Boolean = false, ctrl: ChatCtrl? = null): User? {
     val r = sendCmd(rh, CC.CreateActiveUser(p, pastTimestamp = pastTimestamp), ctrl)
-    if (r is API.Result && r.res is CR.ActiveUser) {
-      if (useAnexDefaults && appPlatform.isAndroid && rh == null && ctrl == null) {
-        applyAnexServerDefaults(r.res.user.userId)
-      }
-      return r.res.user.updateRemoteHostId(rh)
-    }
+    if (r is API.Result && r.res is CR.ActiveUser) return r.res.user.updateRemoteHostId(rh)
     val e = (r as? API.Error)?.err
     if (
       e is ChatError.ChatErrorStore && e.storeError is StoreError.DuplicateName ||
@@ -1452,7 +1450,8 @@ object ChatController {
       saveAnexServerDefaults(userId)
     } catch (e: kotlinx.coroutines.CancellationException) {
       throw e
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+      Log.e(TAG, "Anex server setup failed: " + e::class.simpleName)
       false
     }
     if (!saved) {
@@ -1465,16 +1464,21 @@ object ChatController {
   }
 
   private suspend fun saveAnexServerDefaults(userId: Long): Boolean {
+    fun failed(step: String): Boolean {
+      Log.e(TAG, "Anex server setup failed: $step")
+      return false
+    }
+
     val (smp, xftp) = readAnexServerDefaults()
-    val users = sendCmd(null, CC.ListUsers(), log = false).result as? CR.UsersList ?: return false
+    val users = sendCmd(null, CC.ListUsers(), log = false).result as? CR.UsersList ?: return failed("listing profiles")
     val firstProfile = users.users.size == 1
-    val servers = sendCmd(null, CC.ApiGetUserServers(userId), log = false).result as? CR.UserServers ?: return false
+    val servers = sendCmd(null, CC.ApiGetUserServers(userId), log = false).result as? CR.UserServers ?: return failed("reading server settings")
 
     fun parse(address: String): ServerAddress? =
       json.decodeFromString<ParsedServerAddress>(chatParseServer(address)).serverAddress
 
-    val smpAddress = parse(smp)?.takeIf { it.valid } ?: return false
-    val xftpAddress = parse(xftp)?.takeIf { it.valid } ?: return false
+    val smpAddress = parse(smp)?.takeIf { it.valid } ?: return failed("parsing SMP address")
+    val xftpAddress = parse(xftp)?.takeIf { it.valid } ?: return failed("parsing XFTP address")
 
     fun withDefault(existing: List<UserServer>, address: String, parsed: ServerAddress): List<UserServer> {
       val index = existing.indexOfFirst { parse(it.server) == parsed }
@@ -1502,7 +1506,7 @@ object ChatController {
         else -> group
       }
     }
-    if (sendCmd(null, CC.ApiSetUserServers(userId, updated), log = false).result !is CR.CmdOk) return false
+    if (!sendCmd(null, CC.ApiSetUserServers(userId, updated), log = false).ok) return failed("saving server settings")
     getServerOperators(null)?.let { chatModel.conditions.value = it }
     return true
   }

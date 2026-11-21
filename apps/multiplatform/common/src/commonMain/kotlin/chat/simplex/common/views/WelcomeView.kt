@@ -356,13 +356,13 @@ private fun CreateFirstProfileDesktop(chatModel: ChatModel, close: () -> Unit) {
 fun createProfileInNoProfileSetup(displayName: String, shortDescr: String, image: String? = null, close: () -> Unit) {
   withBGApi {
     val user = controller.apiCreateActiveUser(
-      null, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image), useAnexDefaults = true
+      null, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image)
     ) ?: return@withBGApi
     if (!chatModel.connectedToRemote()) {
       chatModel.localUserCreated.value = true
     }
     controller.appPrefs.onboardingStage.set(OnboardingStage.Step3_ChooseServerOperators)
-    controller.startChat(user)
+    controller.startChat(user, configureAnexServers = true)
     controller.switchUIRemoteHost(null)
     close()
   }
@@ -372,13 +372,16 @@ fun createProfileInProfiles(chatModel: ChatModel, displayName: String, shortDesc
   withBGApi {
     val rhId = chatModel.remoteHostId()
     val user = chatModel.controller.apiCreateActiveUser(
-      rhId, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image), useAnexDefaults = true
+      rhId, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image)
     ) ?: return@withBGApi
     chatModel.currentUser.value = user
     if (chatModel.users.isEmpty()) {
-      chatModel.controller.startChat(user)
+      chatModel.controller.startChat(user, configureAnexServers = true)
       chatModel.controller.appPrefs.onboardingStage.set(OnboardingStage.Step4_NetworkCommitments)
     } else {
+      if (appPlatform.isAndroid && rhId == null) {
+        chatModel.controller.applyAnexServerDefaults(user.userId)
+      }
       val users = chatModel.controller.listUsers(rhId)
       chatModel.users.clear()
       chatModel.users.addAll(users)
@@ -391,7 +394,7 @@ fun createProfileInProfiles(chatModel: ChatModel, displayName: String, shortDesc
 fun createProfileOnboarding(chatModel: ChatModel, displayName: String, close: () -> Unit) {
   withBGApi {
     chatModel.currentUser.value = chatModel.controller.apiCreateActiveUser(
-      null, Profile(displayName.trim(), "", null, null), useAnexDefaults = true
+      null, Profile(displayName.trim(), "", null, null)
     ) ?: return@withBGApi
     chatModel.localUserCreated.value = true
     // new users don't need the local file encryption indicator (all files are encrypted); existing users keep it on

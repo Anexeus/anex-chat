@@ -125,7 +125,7 @@ fun prepareChatBeforeFinishingOnboarding() {
   withBGApi {
     val user = chatModel.controller.apiGetActiveUser(null) ?: return@withBGApi
     chatModel.currentUser.value = user
-    chatModel.controller.startChat(user)
+    chatModel.controller.startChat(user, configureAnexServers = true)
   }
 }
 
