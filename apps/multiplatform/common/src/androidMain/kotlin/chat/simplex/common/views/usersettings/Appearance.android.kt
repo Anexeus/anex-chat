@@ -105,6 +105,7 @@ fun AppearanceScope.AppearanceLayout(
       }
       //      }
 
+      SettingsPreferenceItem(icon = null, stringResource(MR.strings.anex_glass_effects), appPrefs.anexGlassEffects)
       SettingsPreferenceItem(icon = null, stringResource(MR.strings.one_hand_ui), ChatModel.controller.appPrefs.oneHandUI) { enabled ->
         if (enabled) appPrefs.chatBottomBar.set(true)
       }
