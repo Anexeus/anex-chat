@@ -46,7 +46,7 @@ fun YourNetworkView(chatModel: ChatModel) {
 
   val serverOperators = remember { derivedStateOf { chatModel.conditions.value.serverOperators } }
   val selectedOperatorIds = remember {
-    mutableStateOf(serverOperators.value.filter { it.enabled }.map { it.operatorId }.toSet())
+    mutableStateOf(if (appPlatform.isAndroid) emptySet() else serverOperators.value.filter { it.enabled }.map { it.operatorId }.toSet())
   }
 
   LaunchedEffect(selectedOperatorIds.value) {

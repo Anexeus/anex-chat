@@ -1032,9 +1032,14 @@ object ChatController {
     return null
   }
 
-  suspend fun apiCreateActiveUser(rh: Long?, p: Profile?, pastTimestamp: Boolean = false, ctrl: ChatCtrl? = null): User? {
+  suspend fun apiCreateActiveUser(rh: Long?, p: Profile?, pastTimestamp: Boolean = false, ctrl: ChatCtrl? = null, useAnexDefaults: Boolean = false): User? {
     val r = sendCmd(rh, CC.CreateActiveUser(p, pastTimestamp = pastTimestamp), ctrl)
-    if (r is API.Result && r.res is CR.ActiveUser) return r.res.user.updateRemoteHostId(rh)
+    if (r is API.Result && r.res is CR.ActiveUser) {
+      if (useAnexDefaults && appPlatform.isAndroid && rh == null && ctrl == null) {
+        applyAnexServerDefaults(r.res.user.userId)
+      }
+      return r.res.user.updateRemoteHostId(rh)
+    }
     val e = (r as? API.Error)?.err
     if (
       e is ChatError.ChatErrorStore && e.storeError is StoreError.DuplicateName ||
@@ -1442,31 +1447,91 @@ object ChatController {
     return null
   }
 
+  internal suspend fun applyAnexServerDefaults(userId: Long): Boolean {
+    val saved = try {
+      saveAnexServerDefaults(userId)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+      throw e
+    } catch (_: Exception) {
+      false
+    }
+    if (!saved) {
+      AlertManager.shared.showAlertMsg(
+        generalGetString(MR.strings.failed_to_save_servers),
+        generalGetString(MR.strings.anex_server_setup_failed)
+      )
+    }
+    return saved
+  }
+
+  private suspend fun saveAnexServerDefaults(userId: Long): Boolean {
+    val (smp, xftp) = readAnexServerDefaults()
+    val users = sendCmd(null, CC.ListUsers(), log = false).result as? CR.UsersList ?: return false
+    val firstProfile = users.users.size == 1
+    val servers = sendCmd(null, CC.ApiGetUserServers(userId), log = false).result as? CR.UserServers ?: return false
+
+    fun parse(address: String): ServerAddress? =
+      json.decodeFromString<ParsedServerAddress>(chatParseServer(address)).serverAddress
+
+    val smpAddress = parse(smp)?.takeIf { it.valid } ?: return false
+    val xftpAddress = parse(xftp)?.takeIf { it.valid } ?: return false
+
+    fun withDefault(existing: List<UserServer>, address: String, parsed: ServerAddress): List<UserServer> {
+      val index = existing.indexOfFirst { parse(it.server) == parsed }
+      if (index < 0) return existing + UserServer.empty.copy(server = address, enabled = true)
+      return existing.mapIndexed { i, server ->
+        if (i == index) server.copy(enabled = true, deleted = false) else server
+      }
+    }
+
+    val updated = servers.userServers.map { group ->
+      val operator = group.operator
+      when {
+        operator == null -> group.copy(
+          smpServers = withDefault(group.smpServers, smp, smpAddress),
+          xftpServers = withDefault(group.xftpServers, xftp, xftpAddress)
+        )
+        operator.operatorTag == OperatorTag.SimpleX || operator.operatorTag == OperatorTag.Flux -> if (firstProfile) {
+          group.copy(operator = operator.copy(enabled = false))
+        } else {
+          group.copy(
+            smpServers = group.smpServers.map { it.copy(enabled = false) },
+            xftpServers = group.xftpServers.map { it.copy(enabled = false) }
+          )
+        }
+        else -> group
+      }
+    }
+    if (sendCmd(null, CC.ApiSetUserServers(userId, updated), log = false).result !is CR.CmdOk) return false
+    getServerOperators(null)?.let { chatModel.conditions.value = it }
+    return true
+  }
+
   suspend fun getUserServers(rh: Long?): List<UserOperatorServers>? {
     val userId = currentUserId("getUserServers")
-    val r = sendCmd(rh, CC.ApiGetUserServers(userId))
+    val r = sendCmd(rh, CC.ApiGetUserServers(userId), log = false)
     if (r is API.Result && r.res is CR.UserServers) return r.res.userServers
-    Log.e(TAG, "getUserServers bad response: ${r.responseType} ${r.details}")
+    Log.e(TAG, "getUserServers failed")
     return null
   }
 
   suspend fun setUserServers(rh: Long?, userServers: List<UserOperatorServers>): Boolean {
     val userId = currentUserId("setUserServers")
-    val r = sendCmd(rh, CC.ApiSetUserServers(userId, userServers))
+    val r = sendCmd(rh, CC.ApiSetUserServers(userId, userServers), log = false)
     if (r.result is CR.CmdOk) return true
     AlertManager.shared.showAlertMsg(
       generalGetString(MR.strings.failed_to_save_servers),
       "${r.responseType}: ${r.details}"
     )
-    Log.e(TAG, "setUserServers bad response: ${r.responseType} ${r.details}")
+    Log.e(TAG, "setUserServers failed")
     return false
   }
 
   suspend fun validateServers(rh: Long?, userServers: List<UserOperatorServers>): Pair<List<UserServersError>, List<UserServersWarning>>? {
     val userId = currentUserId("validateServers")
-    val r = sendCmd(rh, CC.ApiValidateServers(userId, userServers))
+    val r = sendCmd(rh, CC.ApiValidateServers(userId, userServers), log = false)
     if (r is API.Result && r.res is CR.UserServersValidation) return Pair(r.res.serverErrors, r.res.serverWarnings)
-    Log.e(TAG, "validateServers bad response: ${r.responseType} ${r.details}")
+    Log.e(TAG, "validateServers failed")
     return null
   }
 

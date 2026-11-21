@@ -46,8 +46,10 @@ fun OnboardingConditionsView(chatModel: ChatModel) {
 
   val serverOperators = remember { derivedStateOf { chatModel.conditions.value.serverOperators } }
   val selectedOperatorIds = remember {
-    mutableStateOf(OnboardingSharedState.selectedOperatorIds.ifEmpty {
-      serverOperators.value.filter { it.enabled }.map { it.operatorId }.toSet()
+    mutableStateOf(if (appPlatform.isAndroid) OnboardingSharedState.selectedOperatorIds else {
+      OnboardingSharedState.selectedOperatorIds.ifEmpty {
+        serverOperators.value.filter { it.enabled }.map { it.operatorId }.toSet()
+      }
     })
   }
 
@@ -121,7 +123,7 @@ fun OnboardingConditionsView(chatModel: ChatModel) {
           },
           button = {
             Column(Modifier.widthIn(max = 450.dp).padding(bottom = DEFAULT_PADDING * 2), horizontalAlignment = Alignment.CenterHorizontally) {
-              AcceptConditionsButton(enabled = selectedOperatorIds.value.isNotEmpty(), selectedOperatorIds)
+              AcceptConditionsButton(enabled = chatModel.currentUser.value != null, selectedOperatorIds)
             }
           }
         )
@@ -184,7 +186,7 @@ fun ModalData.ChooseServerOperators(
     prepareChatBeforeFinishingOnboarding()
   }
   CompositionLocalProvider(LocalAppBarHandler provides rememberAppBarHandler()) {
-    ModalView(close, enableClose = selectedOperatorIds.value.isNotEmpty(), cardScreen = true) {
+    ModalView(close, enableClose = appPlatform.isAndroid || selectedOperatorIds.value.isNotEmpty(), cardScreen = true) {
       ColumnWithScrollBar(
         Modifier
           .themedBackground(bgLayerSize = LocalAppBarHandler.current?.backgroundGraphicsLayerSize, bgLayer = LocalAppBarHandler.current?.backgroundGraphicsLayer),
@@ -222,7 +224,7 @@ fun ModalData.ChooseServerOperators(
         Spacer(Modifier.weight(1f))
 
         Column(Modifier.widthIn(max = if (appPlatform.isAndroid) 450.dp else 1000.dp).padding(bottom = DEFAULT_PADDING * 2).align(Alignment.CenterHorizontally), horizontalAlignment = Alignment.CenterHorizontally) {
-          val enabled = selectedOperatorIds.value.isNotEmpty()
+          val enabled = appPlatform.isAndroid || selectedOperatorIds.value.isNotEmpty()
           SetOperatorsButton(enabled, close)
         }
       }
@@ -292,6 +294,14 @@ private fun SetOperatorsButton(enabled: Boolean, close: () -> Unit) {
 
 private fun acceptConditions(selectedOperatorIds: Set<Long>) {
   withBGApi {
+    if (appPlatform.isAndroid) {
+      val user = chatModel.currentUser.value ?: return@withBGApi
+      if (!chatController.applyAnexServerDefaults(user.userId)) return@withBGApi
+      if (selectedOperatorIds.isEmpty()) {
+        completeOnboarding()
+        return@withBGApi
+      }
+    }
     val conditionsId = chatModel.conditions.value.currentConditions.conditionsId
     val r = chatController.acceptConditions(chatModel.remoteHostId(), conditionsId = conditionsId, operatorIds = selectedOperatorIds.toList())
     if (r != null) {

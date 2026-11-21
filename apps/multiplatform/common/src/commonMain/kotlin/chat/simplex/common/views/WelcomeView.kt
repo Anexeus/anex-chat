@@ -355,7 +355,9 @@ private fun CreateFirstProfileDesktop(chatModel: ChatModel, close: () -> Unit) {
 
 fun createProfileInNoProfileSetup(displayName: String, shortDescr: String, image: String? = null, close: () -> Unit) {
   withBGApi {
-    val user = controller.apiCreateActiveUser(null, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image)) ?: return@withBGApi
+    val user = controller.apiCreateActiveUser(
+      null, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image), useAnexDefaults = true
+    ) ?: return@withBGApi
     if (!chatModel.connectedToRemote()) {
       chatModel.localUserCreated.value = true
     }
@@ -370,7 +372,7 @@ fun createProfileInProfiles(chatModel: ChatModel, displayName: String, shortDesc
   withBGApi {
     val rhId = chatModel.remoteHostId()
     val user = chatModel.controller.apiCreateActiveUser(
-      rhId, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image)
+      rhId, Profile(displayName.trim(), "", shortDescr.trim().ifEmpty { null }, image = image), useAnexDefaults = true
     ) ?: return@withBGApi
     chatModel.currentUser.value = user
     if (chatModel.users.isEmpty()) {
@@ -389,7 +391,7 @@ fun createProfileInProfiles(chatModel: ChatModel, displayName: String, shortDesc
 fun createProfileOnboarding(chatModel: ChatModel, displayName: String, close: () -> Unit) {
   withBGApi {
     chatModel.currentUser.value = chatModel.controller.apiCreateActiveUser(
-      null, Profile(displayName.trim(), "", null, null)
+      null, Profile(displayName.trim(), "", null, null), useAnexDefaults = true
     ) ?: return@withBGApi
     chatModel.localUserCreated.value = true
     // new users don't need the local file encryption indicator (all files are encrypted); existing users keep it on
