@@ -115,23 +115,6 @@ fun DefaultAppBar(
 
 
 @Composable
-internal fun GlassAppBar(
-  modifier: Modifier,
-  backdrop: GlassBackdrop,
-  navigationButton: @Composable RowScope.() -> Unit,
-  title: @Composable () -> Unit,
-  buttons: @Composable RowScope.() -> Unit,
-  onTitleClick: (() -> Unit)?
-) {
-  AnexGlassSurface(
-    modifier.then(if (onTitleClick == null) Modifier else Modifier.clickable(onClick = onTitleClick)),
-    backdrop = backdrop
-  ) {
-    AppBar(title = title, navigationIcon = navigationButton, buttons = buttons, centered = true, onTop = false)
-  }
-}
-
-@Composable
 fun CallAppBar(
   title: @Composable () -> Unit,
   onBack: () -> Unit

@@ -40,7 +40,6 @@ internal object AnexGlass {
   fun rim(light: Boolean) = if (light) Color(0xBFFFFFFF) else Color(0x60FFFFFF)
   fun edge(light: Boolean) = if (light) Color(0x35555658) else Color(0x24FFFFFF)
   fun sheen(light: Boolean) = if (light) Color(0x50FFFFFF) else Color(0x15FFFFFF)
-  fun lens(light: Boolean) = if (light) Color(0x845AC0FF) else Color(0x8C35618C)
 }
 
 @Composable
@@ -85,7 +84,6 @@ internal fun AnexGlassSurface(
   modifier: Modifier = Modifier,
   shape: Shape = AnexGlass.pill,
   backdrop: GlassBackdrop? = null,
-  lens: Boolean = false,
   solid: Boolean = false,
   tint: Color = Color.Unspecified,
   content: @Composable BoxScope.() -> Unit
@@ -108,14 +106,14 @@ internal fun AnexGlassSurface(
   )
   Box(
     modifier
-      .then(if (lens) Modifier else Modifier.shadow(5.dp, shape, clip = false))
+      .shadow(5.dp, shape, clip = false)
       .clip(shape)
       .border(1.dp, rim, shape)
   ) {
     backdrop?.run { FrostedLayer(background) }
     Box(
       Modifier.matchParentSize()
-        .background(if (lens) AnexGlass.lens(light) else fill)
+        .background(fill)
         .background(highlight)
     )
     content()

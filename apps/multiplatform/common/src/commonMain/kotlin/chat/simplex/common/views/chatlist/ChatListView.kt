@@ -121,7 +121,7 @@ private fun showSupportSimpleXDismissAlert() {
   )
 }
 
-private fun showNewChatSheet(oneHandUI: State<Boolean>) {
+internal fun showNewChatSheet(oneHandUI: State<Boolean>) {
   connectProgressManager.cancelConnectProgress()
   ModalManager.start.closeModals()
   ModalManager.end.closeModals()
@@ -262,52 +262,17 @@ fun ChatListView(chatModel: ChatModel, userPickerState: MutableStateFlow<Animate
   }
   val searchText = rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
   val listState = rememberLazyListState(lazyListState.first, lazyListState.second)
-  val glassPreference by remember { appPrefs.anexGlassEffects.state }
-  val glass = if (appPlatform.isAndroid && glassPreference && !systemPrefersSolidGlass()) {
-    rememberGlassBackdrop(blur = (platform.androidApiLevel ?: 0) >= 31)
-  } else null
-  val searchRequest = remember { mutableStateOf(false) }
-  val scope = rememberCoroutineScope()
-  val openSearch: (() -> Unit)? = if (glass != null && chatModel.chatRunning.value != null && !shouldShowOnboarding()) {
-    {
-      scope.launch {
-        if (listState.layoutInfo.totalItemsCount > 0) listState.scrollToItem(0)
-        searchRequest.value = true
+  if (appPlatform.isAndroid) {
+    AndroidChatsScreen(searchText, listState, userPickerState, setPerformLA, stopped)
+  } else {
+    Box(Modifier.fillMaxSize()) {
+      ChatListWithLoadingScreen(searchText, listState)
+      Column(Modifier.align(if (oneHandUI.value) Alignment.BottomCenter else Alignment.TopCenter)) {
+        ChatListToolbar(userPickerState, listState, stopped, setPerformLA)
       }
-    }
-  } else null
-
-  Box(Modifier.fillMaxSize()) {
-    val contentModifier = Modifier.fillMaxSize()
-    Box(glass?.capture(contentModifier) ?: contentModifier) {
-      ChatListWithLoadingScreen(searchText, listState, glass != null, searchRequest)
-    }
-    if (oneHandUI.value && glass != null) {
-      Row(
-        Modifier.align(Alignment.TopCenter).statusBarsPadding().fillMaxWidth()
-          .padding(horizontal = AnexGlass.margin, vertical = AnexGlass.verticalInset),
-        horizontalArrangement = Arrangement.spacedBy(AnexGlass.gap),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        AnexGlassSurface(Modifier.weight(1f), shape = AnexGlass.panel, backdrop = glass) {
-          Box(Modifier.height(AppBarHeight * fontSizeSqrtMultiplier).padding(horizontal = 19.dp), contentAlignment = Alignment.CenterStart) {
-            Text(
-              stringResource(MR.strings.anex_app_name),
-              style = MaterialTheme.typography.h2,
-              fontWeight = FontWeight.SemiBold,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis
-            )
-          }
-        }
-        if (openSearch != null) GlassSearchButton(glass, openSearch)
+      if (!oneHandUI.value && searchText.value.text.isEmpty() && !chatModel.desktopNoUserNoRemote && chatModel.chatRunning.value == true) {
+        NewChatSheetFloatingButton(oneHandUI, stopped)
       }
-    }
-    Column(Modifier.align(if (oneHandUI.value) Alignment.BottomCenter else Alignment.TopCenter)) {
-      ChatListToolbar(userPickerState, listState, stopped, setPerformLA, glass, openSearch)
-    }
-    if (!oneHandUI.value && searchText.value.text.isEmpty() && !chatModel.desktopNoUserNoRemote && chatModel.chatRunning.value == true) {
-      NewChatSheetFloatingButton(oneHandUI, stopped)
     }
   }
 
@@ -492,35 +457,16 @@ private fun ConnectBannerCard() {
 }
 
 @Composable
-private fun BoxScope.ChatListWithLoadingScreen(
-  searchText: MutableState<TextFieldValue>, listState: LazyListState, glass: Boolean, searchRequest: MutableState<Boolean>
-) {
+private fun BoxScope.ChatListWithLoadingScreen(searchText: MutableState<TextFieldValue>, listState: LazyListState) {
   if (chatModel.chatRunning.value == null) {
     Text(stringResource(MR.strings.loading_chats), Modifier.align(Alignment.Center), color = MaterialTheme.colors.secondary)
-  } else if (shouldShowOnboarding()) {
-    if (appPlatform.isAndroid) AndroidOnboardingCards(glass)
-  } else {
+  } else if (!shouldShowOnboarding()) {
     if (!chatModel.desktopNoUserNoRemote) {
-      ChatList(searchText, listState, glass, searchRequest)
+      ChatList(searchText = searchText, listState)
     }
     if (chatModel.chats.value.isEmpty() && !chatModel.switchingUsersAndHosts.value && !chatModel.desktopNoUserNoRemote) {
       Text(stringResource(MR.strings.you_have_no_chats), Modifier.align(Alignment.Center), color = MaterialTheme.colors.secondary)
     }
-  }
-}
-
-@Composable
-private fun AndroidOnboardingCards(glass: Boolean) {
-  val oneHandUI = remember { appPrefs.oneHandUI.state }
-  val glassInset = if (glass) AnexGlass.verticalInset * 2 else 0.dp
-  val topPad = topPaddingToContent(false, additionalTopBar = glass && oneHandUI.value) + glassInset
-  val bottomPad = if (oneHandUI.value) {
-    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + AppBarHeight * fontSizeSqrtMultiplier + glassInset
-  } else {
-    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-  }
-  Box(Modifier.fillMaxSize().padding(top = topPad, bottom = bottomPad)) {
-    ConnectOnboardingView()
   }
 }
 
@@ -567,15 +513,8 @@ private fun ConnectButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ChatListToolbar(
-  userPickerState: MutableStateFlow<AnimatedViewState>,
-  listState: LazyListState,
-  stopped: Boolean,
-  setPerformLA: (Boolean) -> Unit,
-  glass: GlassBackdrop?,
-  openSearch: (() -> Unit)?
-) {
-  val serversSummary: MutableState<PresentedServersSummary?> = remember { mutableStateOf(null) }
+private fun ChatListToolbar(userPickerState: MutableStateFlow<AnimatedViewState>, listState: LazyListState, stopped: Boolean, setPerformLA: (Boolean) -> Unit) {
+  val showSummary = rememberShowServersSummary()
   val barButtons = arrayListOf<@Composable RowScope.() -> Unit>()
   val updatingProgress = remember { chatModel.updatingProgress }.value
   val oneHandUI = remember { appPrefs.oneHandUI.state }
@@ -662,97 +601,59 @@ private fun ChatListToolbar(
     }
   }
 
-  val clipboard = LocalClipboardManager.current
   val scope = rememberCoroutineScope()
   val canScrollToZero = remember { derivedStateOf { listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0 } }
-  val navigationButton: @Composable RowScope.() -> Unit = {
-    if (chatModel.users.isEmpty() && !chatModel.desktopNoUserNoRemote) {
-      NavigationButtonMenu {
-        ModalManager.start.showModalCloseable(cardScreen = true) { close ->
-          SettingsView(chatModel, setPerformLA, close)
+  DefaultAppBar(
+    navigationButton = {
+      if (chatModel.users.isEmpty() && !chatModel.desktopNoUserNoRemote) {
+        NavigationButtonMenu {
+          ModalManager.start.showModalCloseable(cardScreen = true) { close ->
+            SettingsView(chatModel, setPerformLA, close)
+          }
+        }
+      } else {
+        val users by remember { derivedStateOf { chatModel.users.filter { u -> u.user.activeUser || !u.user.hidden } } }
+        val allRead = users
+          .filter { u -> !u.user.activeUser && !u.user.hidden }
+          .all { u -> u.unreadCount == 0 }
+        UserProfileButton(chatModel.currentUser.value?.profile?.image, allRead) {
+            userPickerState.value = AnimatedViewState.VISIBLE
         }
       }
-    } else {
-      val users by remember { derivedStateOf { chatModel.users.filter { u -> u.user.activeUser || !u.user.hidden } } }
-      val allRead = users
-        .filter { u -> !u.user.activeUser && !u.user.hidden }
-        .all { u -> u.unreadCount == 0 }
-      UserProfileButton(chatModel.currentUser.value?.profile?.image, allRead) {
-        userPickerState.value = AnimatedViewState.VISIBLE
-      }
-    }
-  }
-  val title: @Composable () -> Unit = {
-    if (!shouldShowOnboarding()) {
-      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DEFAULT_SPACE_AFTER_ICON)) {
-        val label: @Composable () -> Unit = {
+    },
+    title = {
+      if (!shouldShowOnboarding()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DEFAULT_SPACE_AFTER_ICON)) {
           Text(
             stringResource(MR.strings.your_chats),
             color = MaterialTheme.colors.onBackground,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
           )
+          SubscriptionStatusIndicator(showSummary)
         }
-        if (glass != null && oneHandUI.value) {
-          AnexGlassSurface(lens = true) {
-            Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { label() }
-          }
-        } else {
-          label()
-        }
-        SubscriptionStatusIndicator(
-          click = {
-            ModalManager.start.closeModals()
-            val summary = serversSummary.value
-            ModalManager.start.showModalCloseable(
-              endButtons = {
-                if (summary != null) {
-                  ShareButton {
-                    val json = Json {
-                      prettyPrint = true
-                    }
-                    val text = json.encodeToString(PresentedServersSummary.serializer(), summary)
-                    clipboard.shareText(text)
-                  }
-                }
-              }
-            ) { ServersSummaryView(chatModel.currentRemoteHost.value, serversSummary) }
-          }
-        )
       }
-    }
-  }
-  val onTitleClick: (() -> Unit)? = if (canScrollToZero.value) { { scrollToBottom(scope, listState) } } else null
-  val buttons: @Composable RowScope.() -> Unit = { barButtons.forEach { it() } }
-  if (glass == null) {
-    DefaultAppBar(
-      navigationButton = navigationButton,
-      title = title,
-      onTitleClick = onTitleClick,
-      onTop = !oneHandUI.value,
-      solidBackground = appPlatform.isAndroid,
-      buttons = buttons
-    )
-  } else {
-    val insets = if (oneHandUI.value) Modifier.navigationBarsPadding() else Modifier.statusBarsPadding()
-    Row(
-      insets.fillMaxWidth().padding(horizontal = AnexGlass.margin, vertical = AnexGlass.verticalInset),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(AnexGlass.gap)
-    ) {
-      GlassAppBar(Modifier.weight(1f), glass, navigationButton, title, buttons, onTitleClick)
-      if (!oneHandUI.value && openSearch != null) GlassSearchButton(glass, openSearch)
-    }
-  }
+    },
+    onTitleClick = if (canScrollToZero.value) { { scrollToBottom(scope, listState) } } else null,
+    onTop = !oneHandUI.value,
+    onSearchValueChanged = {},
+    buttons = { barButtons.forEach { it() } }
+  )
 }
 
 @Composable
-private fun GlassSearchButton(backdrop: GlassBackdrop, openSearch: () -> Unit) {
-  AnexGlassSurface(Modifier.size(AppBarHeight * fontSizeSqrtMultiplier), backdrop = backdrop) {
-    IconButton(openSearch, Modifier.matchParentSize()) {
-      Icon(painterResource(MR.images.ic_search), stringResource(MR.strings.search_verb), tint = MaterialTheme.colors.onBackground)
-    }
+internal fun rememberShowServersSummary(): () -> Unit {
+  val clipboard = LocalClipboardManager.current
+  val summary = remember { mutableStateOf<PresentedServersSummary?>(null) }
+  return {
+    ModalManager.start.closeModals()
+    ModalManager.start.showModalCloseable(endButtons = {
+      summary.value?.let { current ->
+        ShareButton {
+          val json = Json { prettyPrint = true }
+          clipboard.shareText(json.encodeToString(PresentedServersSummary.serializer(), current))
+        }
+      }
+    }) { ServersSummaryView(chatModel.currentRemoteHost.value, summary) }
   }
 }
 
@@ -906,27 +807,11 @@ private fun openAppLink(rhId: Long?, uri: String) {
 }
 
 @Composable
-private fun ChatListSearchBar(
-  listState: LazyListState,
-  searchText: MutableState<TextFieldValue>,
-  searchShowingSimplexLink: MutableState<Boolean>,
-  searchChatFilteredBySimplexLink: MutableState<Set<String>>,
-  connectNameCandidate: MutableState<String?>,
-  glass: Boolean,
-  searchRequest: MutableState<Boolean>
-) {
-  val field: @Composable () -> Unit = {
+internal fun ChatListSearchBar(listState: LazyListState, searchText: MutableState<TextFieldValue>, searchShowingSimplexLink: MutableState<Boolean>, searchChatFilteredBySimplexLink: MutableState<Set<String>>, connectNameCandidate: MutableState<String?>) {
+  Box {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
       val focusRequester = remember { FocusRequester() }
       var focused by remember { mutableStateOf(false) }
-      val keyboard = LocalSoftwareKeyboardController.current
-      LaunchedEffect(searchRequest.value) {
-        if (searchRequest.value) {
-          focusRequester.requestFocus()
-          keyboard?.show()
-          searchRequest.value = false
-        }
-      }
       Icon(
         painterResource(MR.images.ic_search),
         contentDescription = null,
@@ -954,7 +839,7 @@ private fun ChatListSearchBar(
         }
       } else {
         val padding = if (appPlatform.isDesktop) 0.dp else 7.dp
-        if (chatModel.chats.value.isNotEmpty()) {
+        if (!appPlatform.isAndroid && chatModel.chats.value.isNotEmpty()) {
           ToggleFilterEnabledButton()
         }
         Spacer(Modifier.width(padding))
@@ -1016,14 +901,7 @@ private fun ChatListSearchBar(
           }
       }
     }
-  }
-  if (glass) {
-    AnexGlassSurface(Modifier.fillMaxWidth().padding(horizontal = AnexGlass.margin, vertical = AnexGlass.verticalInset)) {
-      field()
-    }
-  } else {
-    Box {
-      field()
+    if (!appPlatform.isAndroid) {
       val oneHandUI = remember { appPrefs.oneHandUI.state }
       Divider(Modifier.align(if (oneHandUI.value) Alignment.TopStart else Alignment.BottomStart))
     }
@@ -1050,7 +928,7 @@ private fun ErrorSettingsView() {
   }
 }
 
-private var lazyListState = 0 to 0
+internal var lazyListState = 0 to 0
 private var noticesShown = false
 
 enum class ScrollDirection {
@@ -1088,9 +966,7 @@ fun BoxScope.NavigationBarBackground(modifier: Modifier, color: Color = Material
 }
 
 @Composable
-private fun BoxScope.ChatList(
-  searchText: MutableState<TextFieldValue>, listState: LazyListState, glass: Boolean, searchRequest: MutableState<Boolean>
-) {
+private fun BoxScope.ChatList(searchText: MutableState<TextFieldValue>, listState: LazyListState) {
   var scrollDirection by remember { mutableStateOf(ScrollDirection.Idle) }
   var previousIndex by remember { mutableStateOf(0) }
   var previousScrollOffset by remember { mutableStateOf(0) }
@@ -1136,8 +1012,7 @@ private fun BoxScope.ChatList(
   val connectNameCandidate = remember { mutableStateOf<String?>(null) }
   val chats = filteredChats(searchShowingSimplexLink, searchChatFilteredBySimplexLink, searchText.value.text, allChats.value.toList(), activeFilter.value)
   val topPaddingToContent = topPaddingToContent(false)
-  val glassInset = if (glass) AnexGlass.verticalInset * 2 else 0.dp
-  val blankSpaceSize = (if (oneHandUI.value) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + AppBarHeight * fontSizeSqrtMultiplier else topPaddingToContent) + glassInset
+  val blankSpaceSize = if (oneHandUI.value) WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + AppBarHeight * fontSizeSqrtMultiplier else topPaddingToContent
   LazyColumnWithScrollBar(
     if (!oneHandUI.value) Modifier.imePadding() else Modifier,
     listState,
@@ -1173,11 +1048,11 @@ private fun BoxScope.ChatList(
               Divider()
               ConnectByNameRow(candidate, searchText, connectNameCandidate, close = null)
             }
-            ChatListSearchBar(listState, searchText, searchShowingSimplexLink, searchChatFilteredBySimplexLink, connectNameCandidate, glass, searchRequest)
+            ChatListSearchBar(listState, searchText, searchShowingSimplexLink, searchChatFilteredBySimplexLink, connectNameCandidate)
             Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.ime))
           }
         } else {
-          ChatListSearchBar(listState, searchText, searchShowingSimplexLink, searchChatFilteredBySimplexLink, connectNameCandidate, glass, searchRequest)
+          ChatListSearchBar(listState, searchText, searchShowingSimplexLink, searchChatFilteredBySimplexLink, connectNameCandidate)
           // top toolbar: search bar above, so on desktop the connect row goes above the tags
           TagsOrConnectByName(searchText, connectNameCandidate) { candidate ->
             ConnectByNameRow(candidate, searchText, connectNameCandidate, close = null)
@@ -1260,10 +1135,7 @@ private fun BoxScope.ChatList(
       }
     }
     if (appPlatform.isAndroid) {
-      item {
-        if (oneHandUI.value && glass) Spacer(Modifier.height(AppBarHeight * fontSizeSqrtMultiplier + glassInset))
-        Spacer(if (oneHandUI.value) Modifier.windowInsetsTopHeight(WindowInsets.statusBars) else Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
-      }
+      item { Spacer(if (oneHandUI.value) Modifier.windowInsetsTopHeight(WindowInsets.statusBars) else Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars)) }
     }
   }
   if (chats.isEmpty() && chatModel.chats.value.isNotEmpty()) {
@@ -1389,7 +1261,7 @@ internal fun ConnectByNameRow(name: String, searchText: MutableState<TextFieldVa
 }
 
 @Composable
-private fun NoChatsView(searchText: MutableState<TextFieldValue>) {
+internal fun NoChatsView(searchText: MutableState<TextFieldValue>) {
   val activeFilter = remember { chatModel.activeChatTagFilter }.value
 
   if (searchText.value.text.isBlank()) {
@@ -1760,7 +1632,7 @@ fun presetTagMatchesChat(tag: PresetTagKind, chatInfo: ChatInfo, chatStats: Chat
     }
   }
 
-private fun presetTagLabel(tag: PresetTagKind, active: Boolean): Triple<ImageResource, ImageResource?, StringResource> =
+internal fun presetTagLabel(tag: PresetTagKind, active: Boolean): Triple<ImageResource, ImageResource?, StringResource> =
   when (tag) {
     PresetTagKind.GROUP_REPORTS -> Triple(if (active) MR.images.ic_flag_filled else MR.images.ic_flag, null, MR.strings.chat_list_group_reports)
     PresetTagKind.FAVORITES -> Triple(if (active) MR.images.ic_star_filled else MR.images.ic_star, null, MR.strings.chat_list_favorites)

@@ -1,4 +1,5 @@
 <resources>
+  <string name="anex_unread_chats">Unread</string>
   <string name="anex_glass_effects">Glass effects</string>
   <string name="anex_operator_name" translatable="false">Anex</string>
   <string name="anex_onboarding_servers">Anex servers are used by default.</string>
