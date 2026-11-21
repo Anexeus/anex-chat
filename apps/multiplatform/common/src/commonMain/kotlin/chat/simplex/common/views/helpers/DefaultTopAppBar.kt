@@ -32,6 +32,7 @@ fun DefaultAppBar(
   searchPlaceholder: String? = null,
   onSearchValueChanged: (String) -> Unit = {},
   searchTrailingContent: @Composable (() -> Unit)? = null,
+  solidBackground: Boolean = false,
   buttons: @Composable RowScope.() -> Unit = {},
 ) {
   // If I just disable clickable modifier when don't need it, it will stop passing clicks to search. Replacing the whole modifier
@@ -57,11 +58,13 @@ fun DefaultAppBar(
     val blurRadius = remember { appPrefs.appearanceBarsBlurRadius.state }
     Box(Modifier
       .matchParentSize()
-      .blurredBackgroundModifier(keyboardInset, handler, blurRadius, prefAlpha, handler?.keyboardCoversBar == true, onTop, density)
+      .then(if (solidBackground) Modifier else Modifier.blurredBackgroundModifier(
+        keyboardInset, handler, blurRadius, prefAlpha, handler?.keyboardCoversBar == true, onTop, density
+      ))
       .drawWithCache {
         // store it as a variable, don't put it inside if without holding it here. Compiler don't see it changes otherwise
-        val alpha = prefAlpha.value
-        val backgroundColor = if (title != null || fixedTitleText != null || connection == null || !onTop) {
+        val alpha = if (solidBackground) 1f else prefAlpha.value
+        val backgroundColor = if (solidBackground || title != null || fixedTitleText != null || connection == null || !onTop) {
           themeBackgroundMix.copy(alpha)
         } else {
           themeBackgroundMix.copy(topTitleAlpha(false, connection))
@@ -110,6 +113,23 @@ fun DefaultAppBar(
   }
 }
 
+
+@Composable
+internal fun GlassAppBar(
+  modifier: Modifier,
+  backdrop: GlassBackdrop,
+  navigationButton: @Composable RowScope.() -> Unit,
+  title: @Composable () -> Unit,
+  buttons: @Composable RowScope.() -> Unit,
+  onTitleClick: (() -> Unit)?
+) {
+  AnexGlassSurface(
+    modifier.then(if (onTitleClick == null) Modifier else Modifier.clickable(onClick = onTitleClick)),
+    backdrop = backdrop
+  ) {
+    AppBar(title = title, navigationIcon = navigationButton, buttons = buttons, centered = true, onTop = false)
+  }
+}
 
 @Composable
 fun CallAppBar(
