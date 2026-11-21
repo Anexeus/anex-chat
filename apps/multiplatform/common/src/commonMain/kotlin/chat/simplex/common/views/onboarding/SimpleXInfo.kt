@@ -113,10 +113,8 @@ fun SimpleXInfoLayout(
   val barHeight = AppBarHeight * fontSizeSqrtMultiplier
   val modifier = Modifier.fillMaxSize().systemBarsPadding().padding(horizontal = DEFAULT_ONBOARDING_HORIZONTAL_PADDING)
   Column(modifier.padding(top = if (topBar) barHeight else 0.dp, bottom = if (bottomBar) barHeight else 0.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-    Box(Modifier.padding(top = DEFAULT_PADDING * 2).widthIn(max = if (appPlatform.isAndroid) 185.dp else 160.dp), contentAlignment = Alignment.Center) {
-      if (appPlatform.isAndroid) {
-        Text(stringResource(MR.strings.anex_app_name), style = MaterialTheme.typography.h2, textAlign = TextAlign.Center)
-      } else {
+    if (!appPlatform.isAndroid) {
+      Box(Modifier.padding(top = DEFAULT_PADDING * 2).widthIn(max = 160.dp), contentAlignment = Alignment.Center) {
         SimpleXLogo()
       }
     }
@@ -133,7 +131,7 @@ fun SimpleXInfoLayout(
     content = {
       Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-          stringResource(MR.strings.onboarding_be_free),
+          stringResource(if (appPlatform.isAndroid) MR.strings.anex_app_name else MR.strings.onboarding_be_free),
           style = MaterialTheme.typography.h1,
           fontWeight = FontWeight.Bold,
           textAlign = TextAlign.Center,
@@ -149,14 +147,16 @@ fun SimpleXInfoLayout(
           textAlign = TextAlign.Center,
           modifier = Modifier.padding(top = 14.dp)
         )
-        Text(
-          stringResource(if (appPlatform.isAndroid && onboardingStage == null) MR.strings.anex_about_credit else MR.strings.onboarding_first_network),
-          style = MaterialTheme.typography.body2,
-          color = MaterialTheme.colors.secondary,
-          textAlign = TextAlign.Center,
-          lineHeight = 20.sp,
-          modifier = Modifier.padding(top = DEFAULT_PADDING_HALF)
-        )
+        if (!appPlatform.isAndroid || onboardingStage == null) {
+          Text(
+            stringResource(if (appPlatform.isAndroid) MR.strings.anex_about_credit else MR.strings.onboarding_first_network),
+            style = MaterialTheme.typography.body2,
+            color = MaterialTheme.colors.secondary,
+            textAlign = TextAlign.Center,
+            lineHeight = 20.sp,
+            modifier = Modifier.padding(top = DEFAULT_PADDING_HALF)
+          )
+        }
       }
     },
     button = {
