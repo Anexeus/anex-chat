@@ -1,6 +1,7 @@
 package chat.simplex.common.views.chatlist
 
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.interaction.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -35,7 +36,7 @@ internal fun ChatListRoundButton(icon: ImageResource, description: String, glass
   }
   Box(Modifier.size(48.dp).clip(CircleShape).clickable(enabled = enabled, role = Role.Button, onClick = click),
     contentAlignment = Alignment.Center) {
-    AnexGlassSurface(Modifier.size(40.dp), solid = !glass,
+    AnexGlassSurface(Modifier.size(40.dp), solid = !glass, backdrop = LocalGlassBackdrop.current,
       tint = if (prominent) color.copy(alpha = 0.94f) else Color.Unspecified) {
       Icon(painterResource(icon), description, Modifier.align(Alignment.Center).size(23.dp), tint = ink)
     }
@@ -57,21 +58,25 @@ internal fun ChatListTabBar(
   AnexGlassSurface(Modifier.widthIn(max = 360.dp).fillMaxWidth(), backdrop = backdrop, solid = backdrop == null) {
     BoxWithConstraints(Modifier.fillMaxWidth().padding(5.dp)) {
       val segment = maxWidth / 3
-      val offset by animateDpAsState(segment * selected)
+      val presses = remember { List(3) { MutableInteractionSource() } }
+      val pressed = presses.map { it.collectIsPressedAsState().value }.indexOf(true)
+      val target = if (pressed >= 0 && backdrop != null) pressed else selected
+      val offset by animateDpAsState(segment * target, spring(dampingRatio = 0.76f, stiffness = 470f))
+      val lift by animateFloatAsState(if (pressed >= 0 && backdrop != null) 1f else 0f)
       val base = if (light) Color.White else Color(0xFF49494E)
       val lens = if (backdrop == null) Modifier.background(base, CircleShape) else {
         val shine = Brush.linearGradient(listOf(Color.White.copy(alpha = if (light) 0.95f else 0.36f),
           Color.Transparent, Color.White.copy(alpha = 0.14f)))
-        Modifier.background(base.copy(alpha = 0.60f), CircleShape).border(1.dp, shine, CircleShape)
+        Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.39f + lift * 0.21f), base.copy(alpha = 0.53f), base.copy(alpha = 0.78f))), CircleShape).border(1.dp, shine, CircleShape)
       }
       Box(Modifier.matchParentSize()) {
-        Spacer(Modifier.offset(x = offset).width(segment).fillMaxHeight().then(lens))
+        Spacer(Modifier.offset(x = offset).width(segment).fillMaxHeight().graphicsLayer { scaleX = 1f + 0.04f * lift; scaleY = 1f + 0.08f * lift }.then(lens))
       }
       Row(Modifier.fillMaxWidth().selectableGroup()) {
         @Composable
         fun RowScope.Tab(index: Int, icon: ImageResource, label: String, click: () -> Unit) {
           Column(
-            Modifier.weight(1f).clip(CircleShape).selectable(selected == index, role = Role.Tab, onClick = click)
+            Modifier.weight(1f).clip(CircleShape).selectable(selected == index, interactionSource = presses[index], indication = null, role = Role.Tab, onClick = click)
               .heightIn(min = 49.dp).padding(horizontal = 2.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
           ) {

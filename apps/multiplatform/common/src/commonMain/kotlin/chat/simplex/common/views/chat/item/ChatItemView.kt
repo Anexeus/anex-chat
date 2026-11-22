@@ -1110,6 +1110,19 @@ fun showArchiveReportsAlert(ids: List<Long>, allowForAll: Boolean, archiveReport
 
 @Composable
 fun ItemAction(text: String, icon: Painter, color: Color = Color.Unspecified, onClick: () -> Unit) {
+  if (LocalGlassMenu.current) {
+    val ink = when (color) {
+      WarningOrange, Color.Red -> MaterialTheme.colors.error
+      Color.Unspecified -> LocalContentColor.current
+      else -> color
+    }
+    DropdownMenuItem(onClick) {
+      Icon(icon, null, Modifier.size(20.dp), tint = ink)
+      Spacer(Modifier.width(12.dp))
+      Text(text, color = ink)
+    }
+    return
+  }
   val finalColor = if (color == Color.Unspecified) {
     MenuTextColor
   } else color

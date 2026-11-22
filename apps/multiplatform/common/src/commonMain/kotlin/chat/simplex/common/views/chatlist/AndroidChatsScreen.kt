@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.layout.onSizeChanged
@@ -33,6 +34,7 @@ import dev.icerock.moko.resources.compose.stringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
+internal val LocalChatMenuVisible = staticCompositionLocalOf<MutableState<Boolean>?> { null }
 internal val LocalAnexChatRow = staticCompositionLocalOf { false }
 
 internal val chatListAvatarSize: Dp
@@ -87,23 +89,17 @@ internal fun AndroidChatsScreen(
     onDispose { lazyListState = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset }
   }
 
-  Column(Modifier.fillMaxSize().background(theme.background).statusBarsPadding().imePadding()) {
-    if (keyboard != KeyboardState.Opened) {
-      ChatsHeader(glassEnabled, stopped, running == true, openSettings)
-    }
-    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(CircleShape)
-      .background(theme.onBackground.copy(alpha = if (theme.isLight) 0.065f else 0.10f).compositeOver(theme.background))) {
-      ChatListSearchBar(list, search, linkSearch, linkMatches, candidate)
-    }
-    candidate.value?.let { ConnectByNameRow(it, search, candidate, close = null) }
-    ChatListFilters(filter.value, ::select)
-    Box(Modifier.fillMaxSize()) {
+  val menuVisible = remember { mutableStateOf(false) }
+  var headerHeight by remember { mutableStateOf(170.dp) }
+  CompositionLocalProvider(LocalGlassBackdrop provides backdrop, LocalChatMenuVisible provides menuVisible) {
+    Box(Modifier.fillMaxSize().background(theme.background).statusBarsPadding().imePadding()
+      .then(if (menuVisible.value && glassEnabled && (platform.androidApiLevel ?: 0) >= 31) Modifier.blur(5.dp) else Modifier)) {
       Box(backdrop?.capture(Modifier.fillMaxSize()) ?: Modifier.fillMaxSize()) {
         when {
           running == null -> Text(stringResource(MR.strings.loading_chats), Modifier.align(Alignment.Center), color = theme.secondary)
           chats.isEmpty() -> Box(Modifier.align(Alignment.Center).padding(horizontal = 16.dp)) { NoChatsView(search) }
           else -> LazyColumn(Modifier.fillMaxSize(), state = list,
-            contentPadding = PaddingValues(bottom = bottomInset + barHeight + 20.dp)) {
+            contentPadding = PaddingValues(top = headerHeight + 4.dp, bottom = bottomInset + barHeight + 20.dp)) {
             items(chats, key = { it.remoteHostId to it.id }) { chat ->
               val nextSelected = remember { mutableStateOf(false) } // Only used in the desktop row.
               CompositionLocalProvider(LocalAnexChatRow provides true) {
@@ -112,6 +108,19 @@ internal fun AndroidChatsScreen(
             }
           }
         }
+      }
+      Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+        .background(Brush.verticalGradient(listOf(theme.background, theme.background.copy(alpha = 0.94f),
+          theme.background.copy(alpha = 0.80f), theme.background.copy(alpha = 0.22f))))) {
+        if (keyboard != KeyboardState.Opened) {
+          ChatsHeader(glassEnabled, stopped, running == true, openSettings)
+        }
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(CircleShape)
+          .background(theme.onBackground.copy(alpha = if (theme.isLight) 0.065f else 0.10f).compositeOver(theme.background))) {
+          ChatListSearchBar(list, search, linkSearch, linkMatches, candidate)
+        }
+        candidate.value?.let { ConnectByNameRow(it, search, candidate, close = null) }
+        ChatListFilters(filter.value, ::select)
       }
       // Fade the scrolling content before it passes under the floating controls.
       if (keyboard != KeyboardState.Opened) {
@@ -130,6 +139,7 @@ internal fun AndroidChatsScreen(
           }
         }
       }
+      if (menuVisible.value) Spacer(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.34f)))
     }
   }
 }
