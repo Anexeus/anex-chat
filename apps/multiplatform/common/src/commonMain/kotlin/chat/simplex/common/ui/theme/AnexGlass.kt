@@ -66,7 +66,7 @@ internal fun readableGlassInk(preferred: Color, surface: Color): Color {
 }
 
 @Composable
-internal expect fun glassOptics(shape: Shape, lens: Boolean): Modifier
+internal expect fun glassOptics(shape: Shape, lens: Boolean, sharp: Boolean = false): Modifier
 
 // The recorded planes contain content only. Controls replay them in screen coordinates.
 @Stable
@@ -82,6 +82,21 @@ internal class GlassPlane(private val layer: GraphicsLayer) {
     if (!source.isSpecified || !position.isSpecified || layer.isReleased || layer.size == IntSize.Zero) return
     translate(source.x - position.x, source.y - position.y) { drawLayer(layer) }
   }
+}
+
+@Composable
+internal fun rememberGlassPlane(): GlassPlane {
+  val layer = rememberGraphicsLayer()
+  return remember(layer) { GlassPlane(layer) }
+}
+
+@Composable
+internal fun BoxScope.LensGlyphs(plane: GlassPlane) {
+  var position by remember { mutableStateOf<Offset?>(null) }
+  Box(Modifier.matchParentSize().onGloballyPositioned { position = it.positionOnScreen() }
+    .then(glassOptics(AnexGlass.pill, lens = true, sharp = true)).drawBehind {
+      position?.let { target -> with(plane) { paintAt(target) } }
+    })
 }
 
 @Stable
@@ -105,12 +120,8 @@ internal class GlassBackdrop(private val base: GlassPlane?, private val messages
 
 @Composable
 internal fun rememberGlassBackdrop(blur: Boolean, conversation: Boolean = false): GlassBackdrop {
-  @Composable fun plane(): GlassPlane {
-    val layer = rememberGraphicsLayer()
-    return remember(layer) { GlassPlane(layer) }
-  }
-  val base = if (blur) plane() else null
-  val messages = if (blur && conversation) plane() else null
+  val base = if (blur) rememberGlassPlane() else null
+  val messages = if (blur && conversation) rememberGlassPlane() else null
   return remember(base, messages) { GlassBackdrop(base, messages) }
 }
 

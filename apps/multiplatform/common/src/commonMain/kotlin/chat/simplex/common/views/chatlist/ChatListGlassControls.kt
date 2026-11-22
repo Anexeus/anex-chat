@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import chat.simplex.common.ui.theme.*
+import chat.simplex.common.platform.platform
 import chat.simplex.res.*
 import dev.icerock.moko.resources.ImageResource
 import dev.icerock.moko.resources.compose.painterResource
@@ -73,18 +74,23 @@ internal fun ChatListTabBar(
       val position = drag ?: springPosition
       val held = backdrop != null && (drag != null || pressed >= 0)
       val lift by animateFloatAsState(if (held) 1f else 0f, spring(stiffness = 640f))
-      Box(Modifier.matchParentSize()) {
-        val frame = Modifier.offset { IntOffset((position * segmentPx).roundToInt(), 0) }.width(segment).fillMaxHeight()
-          .graphicsLayer { scaleX = 1f + 0.045f * lift; scaleY = 1f + 0.065f * lift }
-        if (backdrop == null) {
-          Spacer(frame.background(if (light) Color.White else Color(0xFF49494E), CircleShape))
-        } else {
-          val tint = if (light) Color.White.copy(alpha = 0.57f) else Color(0xFF8792A3).copy(alpha = 0.16f + 0.08f * lift)
-          AnexGlassSurface(frame, backdrop = backdrop, tint = tint, lens = true) {}
+      val glyphs = if (backdrop != null && (platform.androidApiLevel ?: 0) >= 31)
+        rememberGlassPlane() else null
+      val drawLens: @Composable () -> Unit = {
+        Box(Modifier.matchParentSize()) {
+          val frame = Modifier.offset { IntOffset((position * segmentPx).roundToInt(), 0) }.width(segment).fillMaxHeight()
+            .graphicsLayer { scaleX = 1f + 0.045f * lift; scaleY = 1f + 0.065f * lift }
+          if (backdrop == null) {
+            Spacer(frame.background(if (light) Color.White else Color(0xFF49494E), CircleShape))
+          } else {
+            val tint = if (light) Color.White.copy(alpha = 0.57f) else Color(0xFF8792A3).copy(alpha = 0.16f + 0.08f * lift)
+            AnexGlassSurface(frame, backdrop = backdrop, tint = tint, lens = true) { if (glyphs != null) LensGlyphs(glyphs) }
+          }
         }
       }
+      if (glyphs == null) drawLens()
       val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
-      Row(Modifier.fillMaxWidth().selectableGroup().draggable(
+      Row((glyphs?.capture(Modifier.fillMaxWidth()) ?: Modifier.fillMaxWidth()).selectableGroup().draggable(
         state = rememberDraggableState { delta ->
           drag = ((drag ?: selected.toFloat()) + delta / segmentPx).coerceIn(0f, 2f)
         },
@@ -125,6 +131,7 @@ internal fun ChatListTabBar(
         Tab(1, MR.images.ic_group, stringResource(MR.strings.chat_list_contacts), onContacts)
         Tab(2, MR.images.ic_account_circle_filled, stringResource(MR.strings.settings_section_title_you), onProfile)
       }
+      if (glyphs != null) drawLens()
     }
   }
 }

@@ -94,30 +94,32 @@ internal actual fun systemPrefersSolidGlass(): Boolean {
 }
 
 @Composable
-internal actual fun glassOptics(shape: Shape, lens: Boolean): Modifier {
-  if (Build.VERSION.SDK_INT < 33) return if (Build.VERSION.SDK_INT >= 31) Modifier.blur(5.dp) else Modifier
-  return refractingLayer(shape, lens)
+internal actual fun glassOptics(shape: Shape, lens: Boolean, sharp: Boolean): Modifier {
+  if (Build.VERSION.SDK_INT < 33) return if (Build.VERSION.SDK_INT >= 31 && !sharp) Modifier.blur(5.dp) else Modifier
+  return refractingLayer(shape, lens, sharp)
 }
 
 @TargetApi(33)
 @Composable
-private fun refractingLayer(shape: Shape, lens: Boolean): Modifier {
+private fun refractingLayer(shape: Shape, lens: Boolean, sharp: Boolean): Modifier {
   val density = LocalDensity.current
   val direction = LocalLayoutDirection.current
   var bounds by remember { mutableStateOf(IntSize.Zero) }
-  val effect = remember(bounds, density, direction, shape, lens) {
+  val effect = remember(bounds, density, direction, shape, lens, sharp) {
     if (bounds.width == 0 || bounds.height == 0) null else {
       val outline = shape.createOutline(bounds.toSize(), direction, density)
       val radius = (outline as? Outline.Rounded)?.roundRect?.topLeftCornerRadius?.x
         ?: minOf(bounds.width, bounds.height) / 2f
       val shader = RuntimeShader(GLASS_SHADER).apply {
+        setFloatUniform("reflection", if (sharp) 0f else 1f)
         setFloatUniform("extent", bounds.width.toFloat(), bounds.height.toFloat())
         setFloatUniform("radius", radius)
         setFloatUniform("depth", density.density * if (lens) 9f else 5f)
       }
       val sigma = density.density * if (lens) 1.25f else 3.2f
-      RenderEffect.createChainEffect(RenderEffect.createRuntimeShaderEffect(shader, "scene"),
-        RenderEffect.createBlurEffect(sigma, sigma, Shader.TileMode.CLAMP)).asComposeRenderEffect()
+      val refraction = RenderEffect.createRuntimeShaderEffect(shader, "scene")
+      (if (sharp) refraction else RenderEffect.createChainEffect(refraction,
+        RenderEffect.createBlurEffect(sigma, sigma, Shader.TileMode.CLAMP))).asComposeRenderEffect()
     }
   }
   return Modifier.onSizeChanged { bounds = it }.graphicsLayer { renderEffect = effect }
@@ -130,6 +132,7 @@ private const val GLASS_SHADER = """
   uniform float2 extent;
   uniform float radius;
   uniform float depth;
+  uniform float reflection;
 
   half4 main(float2 p) {
     float2 q = p - extent * 0.5;
@@ -147,6 +150,6 @@ private const val GLASS_SHADER = """
     c.b = scene.eval(clamp(uv + bend * 0.10, float2(0.5), extent - 0.5)).b;
     float glint = pow(max(dot(normal, float2(-0.60,-0.80)), 0.0), 5.0)
       * exp(-max(distance, 0.0) / max(0.5, depth * 0.17));
-    return half4(min(c.rgb + half3(glint * 0.20), half3(1.0)), c.a);
+    return half4(min(c.rgb + half3(glint * 0.20 * reflection * c.a), half3(1.0)), c.a);
   }
 """
