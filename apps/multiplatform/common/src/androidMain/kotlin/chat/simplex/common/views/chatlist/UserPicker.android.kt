@@ -82,7 +82,7 @@ fun UserPickerUserBox(
         onClick = { onClick(userInfo.user) },
         enabled = !stopped
       )
-      .background(MaterialTheme.colors.background)
+      .background(if (LocalGlassBackdrop.current == null) MaterialTheme.colors.background else MaterialTheme.colors.onBackground.copy(alpha = 0.07f))
       .padding(USER_PICKER_ROW_PADDING),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(USER_PICKER_ROW_PADDING)
@@ -192,7 +192,7 @@ actual fun PlatformUserPicker(modifier: Modifier, pickerState: MutableStateFlow<
         if (backdrop != null) {
           AnexGlassSurface(draggableModifier.padding(horizontal = 14.dp, vertical = 8.dp).widthIn(max = 430.dp),
             shape = RoundedCornerShape(28.dp), backdrop = backdrop,
-            tint = if (MaterialTheme.colors.isLight) Color(0xE6F3F4F6) else Color(0xDB090C11)) {
+            tint = if (MaterialTheme.colors.isLight) Color(0xBDF3F4F6) else Color(0xA9090C11)) {
             Box(modifier) { content() }
           }
         } else Box(draggableModifier.then(modifier).navigationBarsPadding()) { content() }

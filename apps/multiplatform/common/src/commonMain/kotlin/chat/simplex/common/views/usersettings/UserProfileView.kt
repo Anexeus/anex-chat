@@ -175,7 +175,22 @@ fun UserProfileLayout(
                 .padding(bottom = 24.dp),
               contentAlignment = Alignment.Center
             ) {
-              Box(contentAlignment = Alignment.TopEnd) {
+              if (appPlatform.isAndroid && glassEnabled()) {
+                val portrait = rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31)
+                Box {
+                  Box(portrait.capture(Modifier)) {
+                    ProfileImage(108.dp, profileImage.value, color = MaterialTheme.colors.secondary.copy(alpha = 0.1f))
+                  }
+                  AnexGlassSurface(Modifier.align(Alignment.BottomEnd).size(48.dp), backdrop = portrait) {
+                    Box(Modifier.align(Alignment.Center)) { EditImageButton { scope.launch { bottomSheetModalState.show() } } }
+                  }
+                  if (profileImage.value != null) {
+                    AnexGlassSurface(Modifier.align(Alignment.TopEnd).size(48.dp), backdrop = portrait) {
+                      DeleteImageButton { profileImage.value = null }
+                    }
+                  }
+                }
+              } else Box(contentAlignment = Alignment.TopEnd) {
                 Box(contentAlignment = Alignment.Center) {
                   ProfileImage(108.dp, profileImage.value, color = MaterialTheme.colors.secondary.copy(alpha = 0.1f))
                   EditImageButton { scope.launch { bottomSheetModalState.show() } }
