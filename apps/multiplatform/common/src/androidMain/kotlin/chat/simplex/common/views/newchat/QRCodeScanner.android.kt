@@ -33,6 +33,9 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.common.util.concurrent.ListenableFuture
 import dev.icerock.moko.resources.compose.painterResource
 import dev.icerock.moko.resources.compose.stringResource
+import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
+import chat.simplex.common.ui.theme.*
 import kotlinx.coroutines.delay
 import java.util.concurrent.*
 
@@ -46,20 +49,8 @@ actual fun QRCodeScanner(
 ) {
   val context = LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
-  val preview = remember { mutableStateOf<Preview?>(null) }
-  val contactLink = remember { mutableStateOf("") }
-  val checkingLink = remember { mutableStateOf(false) }
-
-  val cameraProviderFuture by produceState<ListenableFuture<ProcessCameraProvider>?>(initialValue = null) {
-    value = ProcessCameraProvider.getInstance(context)
-  }
-
-  DisposableEffect(lifecycleOwner) {
-    onDispose {
-      cameraProviderFuture?.get()?.unbindAll()
-    }
-  }
-
+  val handle by rememberUpdatedState(onBarcode)
+  val scope = rememberCoroutineScope()
   Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
     val cameraPermissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
     val modifier = Modifier
@@ -69,63 +60,69 @@ actual fun QRCodeScanner(
       .aspectRatio(1f)
     val showScanner = remember { showQRCodeScanner }
     if (showScanner.value && cameraPermissionState.status == PermissionStatus.Granted) {
-      AndroidView(
-        factory = { AndroidViewContext ->
-          PreviewView(AndroidViewContext).apply {
-            this.scaleType = PreviewView.ScaleType.FILL_CENTER
-            layoutParams = ViewGroup.LayoutParams(
-              ViewGroup.LayoutParams.MATCH_PARENT,
-              ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-          }
-        },
-        modifier = modifier
-      ) { previewView ->
-        val cameraSelector: CameraSelector = CameraSelector.Builder()
-          .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-          .build()
-        val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
-        cameraProviderFuture?.addListener({
-          preview.value = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
-          }
-          val detector: QrCodeDetector<GrayU8> = FactoryFiducial.qrcode(null, GrayU8::class.java)
-          suspend fun getQR(imageProxy: ImageProxy) {
-            if (checkingLink.value) return
-            checkingLink.value = true
-
-            detector.process(imageProxyToGrayU8(imageProxy))
-            val found = detector.detections
-            val qr = found.firstOrNull()
-            if (qr != null) {
-              if (qr.message != contactLink.value) {
-                // Make sure link is new and not a repeat if that link was handled successfully
-                if (onBarcode(qr.message)) {
-                  contactLink.value = qr.message
-                }
-                // just some delay to not spam endlessly with alert in case the user scan something wrong, and it fails fast
-                // (for example, scan user's address while verifying contact code - it prevents alert spam)
+      val view = remember(context) { PreviewView(context).apply {
+        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        scaleType = PreviewView.ScaleType.FILL_CENTER
+      } }
+      var camera by remember { mutableStateOf<Camera?>(null) }
+      var lit by remember { mutableStateOf(false) }
+      var failed by remember { mutableStateOf(false) }
+      DisposableEffect(view, lifecycleOwner) {
+        val worker = Executors.newSingleThreadExecutor()
+        val busy = AtomicBoolean()
+        var previous: String? = null
+        var disposed = false
+        val future = ProcessCameraProvider.getInstance(context)
+        val preview = Preview.Builder().build().also { it.setSurfaceProvider(view.surfaceProvider) }
+        val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
+        val detector = lazy { FactoryFiducial.qrcode(null, GrayU8::class.java) }
+        analysis.setAnalyzer(worker) { frame ->
+          val code = try {
+            if (busy.get()) null else imageProxyToGrayU8(frame)?.let {
+              detector.value.process(it)
+              detector.value.detections.firstOrNull()?.message
+            }
+          } finally { frame.close() }
+          if (code != null && busy.compareAndSet(false, true)) scope.launch {
+            try {
+              if (!disposed && code != previous) {
+                if (handle(code)) previous = code
                 delay(1000)
               }
-            }
-            checkingLink.value = false
-            imageProxy.close()
+            } finally { busy.set(false) }
           }
-
-          val imageAnalyzer = ImageAnalysis.Analyzer { proxy -> withApi { getQR(proxy) } }
-          val imageAnalysis: ImageAnalysis = ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setImageQueueDepth(1)
-            .build()
-            .also { it.setAnalyzer(cameraExecutor, imageAnalyzer) }
-          try {
-            cameraProviderFuture?.get()?.unbindAll()
-            cameraProviderFuture?.get()?.bindToLifecycle(lifecycleOwner, cameraSelector, preview.value, imageAnalysis)
+        }
+        var provider: ProcessCameraProvider? = null
+        future.addListener({
+          if (!disposed) try {
+            val p = future.get()
+            provider = p
+            val selector = if (p.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)) CameraSelector.DEFAULT_BACK_CAMERA else CameraSelector.DEFAULT_FRONT_CAMERA
+            camera = p.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
           } catch (e: Exception) {
-            Log.d(TAG, "CameraPreview: ${e.localizedMessage}")
+            failed = true
+            Log.w(TAG, "QR camera unavailable: " + e.javaClass.simpleName)
           }
         }, ContextCompat.getMainExecutor(context))
+        onDispose {
+          disposed = true
+          analysis.clearAnalyzer()
+          provider?.unbind(preview, analysis)
+          worker.shutdown()
+        }
+      }
+      Box(modifier) {
+        AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
+        if (failed) Text(stringResource(MR.strings.camera_not_available), Modifier.align(Alignment.Center))
+        if (camera?.cameraInfo?.hasFlashUnit() == true) {
+          AnexGlassSurface(Modifier.align(Alignment.BottomEnd).padding(8.dp), solid = !glassEnabled()) {
+            TextButton(onClick = {
+              val enable = !lit
+              camera?.cameraControl?.enableTorch(enable)
+              lit = enable
+            }) { Text(if (lit) "Torch off" else "Torch on", color = LocalContentColor.current) }
+          }
+        }
       }
     } else {
       val buttonColors = ButtonDefaults.buttonColors(

@@ -1,0 +1,1 @@
+Stage 1 — Fixed frame closure, camera rebinding and scanner/paste parsing differences. ARM64 debug built and installed in place. Original preview streamed with camera permission granted. Updated preview awaits device unlock and a physical second-screen QR test.

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -34,6 +35,7 @@ fun ModalView(
   searchAlwaysVisible: Boolean = false,
   onSearchValueChanged: (String) -> Unit = {},
   endButtons: @Composable RowScope.() -> Unit = {},
+  glassNavigation: Boolean = false,
   appBar: @Composable (BoxScope.() -> Unit)? = null,
   content: @Composable BoxScope.() -> Unit,
 ) {
@@ -55,6 +57,15 @@ fun ModalView(
         Box(Modifier.align(if (oneHandUI.value) Alignment.BottomStart else Alignment.TopStart)) {
           if (appBar != null) {
             appBar()
+          } else if (glassNavigation && appPlatform.isAndroid) {
+            val insets = if (oneHandUI.value) Modifier.navigationBarsPadding() else Modifier.statusBarsPadding()
+            Row(insets.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+              horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+              if (showClose) AnexGlassSurface(solid = !glassEnabled()) {
+                NavigationButtonBack(if (enableClose) close else null)
+              }
+              Row(content = endButtons)
+            }
           } else {
             DefaultAppBar(
               navigationButton = if (showClose) {
@@ -133,9 +144,9 @@ class ModalManager(private val placement: ModalPlacement? = null) {
     }
   }
 
-  fun showModalCloseable(settings: Boolean = false, showClose: Boolean = true, id: ModalViewId? = null, cardScreen: Boolean = false, endButtons: @Composable RowScope.() -> Unit = {}, content: @Composable ModalData.(close: () -> Unit) -> Unit) {
+  fun showModalCloseable(settings: Boolean = false, showClose: Boolean = true, id: ModalViewId? = null, cardScreen: Boolean = false, endButtons: @Composable RowScope.() -> Unit = {}, glassNavigation: Boolean = false, content: @Composable ModalData.(close: () -> Unit) -> Unit) {
     showCustomModal(id = id) { close ->
-      ModalView(close, showClose = showClose, cardScreen = cardScreen, endButtons = endButtons, content = { content(close) })
+      ModalView(close, glassNavigation = glassNavigation, showClose = showClose, cardScreen = cardScreen, endButtons = endButtons, content = { content(close) })
     }
   }
 

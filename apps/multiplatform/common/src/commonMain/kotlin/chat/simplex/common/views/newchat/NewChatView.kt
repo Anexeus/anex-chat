@@ -128,6 +128,7 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
         KeyChangeEffect(pagerState.currentPage) {
           selection.value = NewChatOption.values()[pagerState.currentPage]
         }
+        @Composable fun Options() {
         TabRow(
           selectedTabIndex = pagerState.currentPage,
           backgroundColor = Color.Transparent,
@@ -141,7 +142,7 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
                   pagerState.animateScrollToPage(index)
                 }
               },
-              text = { Text(it, fontSize = 13.sp) },
+              text = { Text(if (appPlatform.isAndroid && index == NewChatOption.INVITE.ordinal) "My code" else it, fontSize = 13.sp) },
               icon = {
                 Icon(
                   if (NewChatOption.INVITE.ordinal == index) painterResource(MR.images.ic_repeat_one) else painterResource(MR.images.ic_qr_code),
@@ -153,6 +154,8 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
             )
           }
         }
+        }
+        if (appPlatform.isAndroid) AnexGlassSurface(Modifier.padding(horizontal = DEFAULT_PADDING), solid = !glassEnabled()) { Options() } else Options()
 
         HorizontalPager(state = pagerState, Modifier, pageNestedScrollConnection = LocalAppBarHandler.current!!.connection, verticalAlignment = Alignment.Top, userScrollEnabled = appPlatform.isAndroid) { index ->
           Column(
@@ -654,14 +657,17 @@ private fun ConnectView(rhId: Long?, showQRCodeScanner: MutableState<Boolean>, p
 
     SectionView(stringResource(MR.strings.or_scan_qr_code), headerBottomPadding = 5.dp) {
       QRCodeScanner(showQRCodeScanner) { text ->
-        val linkVerified = verifyOnly(text)
-        if (!linkVerified) {
-          AlertManager.shared.showAlertMsg(
-            title = generalGetString(MR.strings.invalid_qr_code),
-            text = generalGetString(MR.strings.code_you_scanned_is_not_simplex_link_qr_code)
-          )
+        val target = strConnectTarget(text.trim())
+        val link = when (target) {
+          is ConnectTarget.Link -> target.text
+          is ConnectTarget.Name -> target.text
+          null -> null
         }
-        verifyAndConnect(rhId, text, close)
+        if (link == null) {
+          AlertManager.shared.showAlertMsg(title = generalGetString(MR.strings.invalid_qr_code),
+            text = generalGetString(MR.strings.code_you_scanned_is_not_simplex_link_qr_code))
+          false
+        } else withContext(Dispatchers.Default) { connect(rhId, link, close) }
       }
     }
   }
@@ -671,7 +677,7 @@ private fun ConnectView(rhId: Long?, showQRCodeScanner: MutableState<Boolean>, p
 private fun PasteLinkView(rhId: Long?, pastedLink: MutableState<String>, showQRCodeScanner: MutableState<Boolean>, close: () -> Unit) {
   if (pastedLink.value.isEmpty()) {
     val clipboard = LocalClipboardManager.current
-    SectionItemView({
+    @Composable fun Paste() { SectionItemView({
       val str = clipboard.getText()?.text ?: return@SectionItemView
       when (val target = strConnectTarget(str.trim())) {
         is ConnectTarget.Link -> {
@@ -696,7 +702,8 @@ private fun PasteLinkView(rhId: Long?, pastedLink: MutableState<String>, showQRC
       if (connectProgressManager.showConnectProgress != null) {
         CIFileViewScope.progressIndicator(sizeMultiplier = 0.6f)
       }
-    }
+    } }
+    if (appPlatform.isAndroid) AnexGlassSurface(Modifier.padding(horizontal = DEFAULT_PADDING), solid = !glassEnabled()) { Paste() } else Paste()
   } else {
     Row(
       Modifier.padding(end = DEFAULT_PADDING),
@@ -775,17 +782,6 @@ private fun filteredProfiles(users: List<User>, searchTextOrPassword: String): L
       correctPassword(u, s)
     }
   }
-}
-
-private fun verifyOnly(text: String?): Boolean = text != null && strIsSimplexLink(text)
-
-private suspend fun verifyAndConnect(rhId: Long?, text: String?, close: () -> Unit): Boolean {
-  if (text != null && strIsSimplexLink(text)) {
-    return withContext(Dispatchers.Default) {
-      connect(rhId, text, close)
-    }
-  }
-  return false
 }
 
 private suspend fun connect(rhId: Long?, link: String, close: () -> Unit, cleanup: (() -> Unit)? = null): Boolean =

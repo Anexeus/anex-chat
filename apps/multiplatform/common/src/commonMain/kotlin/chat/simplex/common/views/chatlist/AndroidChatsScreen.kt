@@ -203,7 +203,7 @@ private fun ChatsHeader(glass: Boolean, stopped: Boolean, running: Boolean, open
       DefaultDropdownMenu(newChat) {
         fun openConnection(option: NewChatOption) {
           newChat.value = false
-          ModalManager.start.showModalCloseable { close ->
+          ModalManager.start.showModalCloseable(glassNavigation = true) { close ->
             NewChatView(chatModel.currentRemoteHost.value, option, showQRCodeScanner = option == NewChatOption.CONNECT, close = close)
           }
         }
