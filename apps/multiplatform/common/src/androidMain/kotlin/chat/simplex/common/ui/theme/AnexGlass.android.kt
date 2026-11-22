@@ -114,7 +114,13 @@ private fun refractingLayer(shape: Shape, lens: Boolean, sharp: Boolean): Modifi
         setFloatUniform("reflection", if (sharp) 0f else 1f)
         setFloatUniform("extent", bounds.width.toFloat(), bounds.height.toFloat())
         setFloatUniform("radius", radius)
-        setFloatUniform("depth", density.density * if (lens) 9f else 5f)
+        // Keep the lettering intact at rest. The moving rim can catch a glyph,
+        // but the strong displacement belongs to the scenery under the control.
+        setFloatUniform("depth", density.density * when {
+          sharp -> 2.4f
+          lens -> 8f
+          else -> 5f
+        })
       }
       val sigma = density.density * if (lens) 1.25f else 3.2f
       val refraction = RenderEffect.createRuntimeShaderEffect(shader, "scene")
@@ -146,8 +152,10 @@ private const val GLASS_SHADER = """
     float2 bend = normal * depth * edge * edge;
     float2 uv = clamp(p - bend, float2(0.5), extent - 0.5);
     half4 c = scene.eval(uv);
-    c.r = scene.eval(clamp(uv - bend * 0.10, float2(0.5), extent - 0.5)).r;
-    c.b = scene.eval(clamp(uv + bend * 0.10, float2(0.5), extent - 0.5)).b;
+    if (reflection < 0.5) return c;
+    float fringe = 0.09;
+    c.r = scene.eval(clamp(uv - bend * fringe, float2(0.5), extent - 0.5)).r;
+    c.b = scene.eval(clamp(uv + bend * fringe, float2(0.5), extent - 0.5)).b;
     float glint = pow(max(dot(normal, float2(-0.60,-0.80)), 0.0), 5.0)
       * exp(-max(distance, 0.0) / max(0.5, depth * 0.17));
     return half4(min(c.rgb + half3(glint * 0.20 * reflection * c.a), half3(1.0)), c.a);

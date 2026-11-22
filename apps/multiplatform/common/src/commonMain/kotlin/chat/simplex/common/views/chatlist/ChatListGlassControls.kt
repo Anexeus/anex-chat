@@ -76,6 +76,7 @@ internal fun ChatListTabBar(
       val lift by animateFloatAsState(if (held) 1f else 0f, spring(stiffness = 640f))
       val glyphs = if (backdrop != null && (platform.androidApiLevel ?: 0) >= 31)
         rememberGlassPlane() else null
+      val bendGlyphs = glyphs != null && (held || kotlin.math.abs(position - selected) > 0.012f)
       val drawLens: @Composable () -> Unit = {
         Box(Modifier.matchParentSize()) {
           val frame = Modifier.offset { IntOffset((position * segmentPx).roundToInt(), 0) }.width(segment).fillMaxHeight()
@@ -84,11 +85,11 @@ internal fun ChatListTabBar(
             Spacer(frame.background(if (light) Color.White else Color(0xFF49494E), CircleShape))
           } else {
             val tint = if (light) Color.White.copy(alpha = 0.57f) else Color(0xFF8792A3).copy(alpha = 0.16f + 0.08f * lift)
-            AnexGlassSurface(frame, backdrop = backdrop, tint = tint, lens = true) { if (glyphs != null) LensGlyphs(glyphs) }
+            AnexGlassSurface(frame, backdrop = backdrop, tint = tint, lens = true) { if (bendGlyphs && glyphs != null) LensGlyphs(glyphs) }
           }
         }
       }
-      if (glyphs == null) drawLens()
+      if (!bendGlyphs) drawLens()
       val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
       Row((glyphs?.capture(Modifier.fillMaxWidth()) ?: Modifier.fillMaxWidth()).selectableGroup().draggable(
         state = rememberDraggableState { delta ->
@@ -131,7 +132,7 @@ internal fun ChatListTabBar(
         Tab(1, MR.images.ic_group, stringResource(MR.strings.chat_list_contacts), onContacts)
         Tab(2, MR.images.ic_account_circle_filled, stringResource(MR.strings.settings_section_title_you), onProfile)
       }
-      if (glyphs != null) drawLens()
+      if (bendGlyphs) drawLens()
     }
   }
 }
