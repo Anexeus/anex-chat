@@ -59,7 +59,10 @@ fun DefaultAppBar(
     val density = LocalDensity.current
     val blurRadius = remember { appPrefs.appearanceBarsBlurRadius.state }
     if (settingsGlass) {
-      AnexGlassSurface(Modifier.matchParentSize(), backdrop = LocalGlassBackdrop.current, solid = !glassEnabled()) {}
+      val glass = LocalGlassBackdrop.current
+      val tint = if (MaterialTheme.colors.isLight) Color(0x62F6FAFF) else Color(0x42222F3F)
+      AnexGlassSurface(Modifier.matchParentSize(), backdrop = glass, solid = glass == null,
+        tint = if (glass != null) tint else Color.Unspecified, lens = glass != null) {}
     } else Box(Modifier
       .matchParentSize()
       .then(if (solidBackground) Modifier else Modifier.blurredBackgroundModifier(
@@ -109,7 +112,7 @@ fun DefaultAppBar(
         },
         navigationIcon = if (settingsGlass && navigationButton != null) ({
           Row(Modifier.clip(androidx.compose.foundation.shape.CircleShape)
-            .background(MaterialTheme.colors.onSurface.copy(alpha = 0.07f))) { navigationButton() }
+            .background(MaterialTheme.colors.onSurface.copy(alpha = 0.11f))) { navigationButton() }
         }) else navigationButton,
         addStatusInset = !settingsGlass,
         buttons = if (!showSearch) buttons else {{}},

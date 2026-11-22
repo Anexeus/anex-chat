@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import chat.simplex.common.model.ChatController.appPrefs
@@ -47,15 +48,23 @@ fun ModalView(
   Surface(Modifier.fillMaxSize(), contentColor = LocalContentColor.current) {
     val bgOverride = if (cardScreen) canvasColorForCurrentTheme() else if (background != Color.Unspecified) background else null
     val styled = settingsGlass && appPlatform.isAndroid
-    val backdrop = if (styled && glassEnabled()) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31) else null
+    val useGlass = styled && glassEnabled()
+    val backdrop = if (useGlass) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31) else null
     CompositionLocalProvider(LocalCardScreen provides cardScreen, LocalSettingsGlass provides styled) {
     Box(Modifier.themedBackground(bgLayerSize = LocalAppBarHandler.current?.backgroundGraphicsLayerSize, bgLayer = LocalAppBarHandler.current?.backgroundGraphicsLayer, overrideColor = bgOverride)) {
-      Box(modifier = backdrop?.capture(modifier) ?: modifier) {
-        content()
-      }
+      if (backdrop != null) {
+        Box(backdrop.capture(Modifier.fillMaxSize())) { Box(modifier) { content() } }
+      } else Box(modifier) { content() }
       if (showAppBar) {
-        if (oneHandUI.value) {
-          StatusBarBackground()
+        if (oneHandUI.value) StatusBarBackground()
+        if (useGlass) {
+          val canvas = bgOverride ?: MaterialTheme.colors.background
+          val edge = canvas.copy(alpha = 0.24f)
+          val colors = if (oneHandUI.value) listOf(Color.Transparent, edge) else listOf(edge, Color.Transparent)
+          Spacer(Modifier.align(if (oneHandUI.value) Alignment.BottomCenter else Alignment.TopCenter)
+            .fillMaxWidth()
+            .then(if (oneHandUI.value) Modifier.navigationBarsPadding() else Modifier.statusBarsPadding())
+            .height(56.dp).background(Brush.verticalGradient(colors)))
         }
         Box(Modifier.align(if (oneHandUI.value) Alignment.BottomStart else Alignment.TopStart)) {
           if (appBar != null) {
