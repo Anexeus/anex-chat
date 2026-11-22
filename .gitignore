@@ -92,3 +92,8 @@ badge_service.ini
 
 # Local Android server configuration
 /anex-servers.local.properties
+
+# Local Android release signing material
+*.jks
+*.keystore
+KEYSTORE-PASSWORDS.txt
