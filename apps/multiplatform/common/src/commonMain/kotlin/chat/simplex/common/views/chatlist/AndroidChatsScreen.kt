@@ -133,7 +133,7 @@ internal fun AndroidChatsScreen(
         androidx.compose.animation.AnimatedVisibility(barVisible || pickerState.isVisible(), Modifier.align(Alignment.BottomCenter),
           enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
           Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(
-            theme.background.copy(alpha = 0f), theme.background.copy(alpha = 0.32f), theme.background.copy(alpha = 0.85f)
+            theme.background.copy(alpha = 0f), theme.background.copy(alpha = 0.12f), theme.background.copy(alpha = 0.41f)
           ))).navigationBarsPadding().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
             contentAlignment = Alignment.Center) {
             Box(Modifier.onSizeChanged { barHeight = with(density) { it.height.toDp() } }) {

@@ -188,12 +188,17 @@ actual fun PlatformUserPicker(modifier: Modifier, pickerState: MutableStateFlow<
             swipeDistance = height.intValue.toFloat(),
           )
         else Modifier
-        Box(draggableModifier.then(modifier).navigationBarsPadding()) {
-          content()
-        }
+        val backdrop = LocalGlassBackdrop.current
+        if (backdrop != null) {
+          AnexGlassSurface(draggableModifier.padding(horizontal = 14.dp, vertical = 8.dp).widthIn(max = 430.dp),
+            shape = RoundedCornerShape(28.dp), backdrop = backdrop,
+            tint = if (MaterialTheme.colors.isLight) Color(0xE6F3F4F6) else Color(0xDB090C11)) {
+            Box(modifier) { content() }
+          }
+        } else Box(draggableModifier.then(modifier).navigationBarsPadding()) { content() }
       }
     }
-    NavigationBarBackground(
+    if (LocalGlassBackdrop.current == null) NavigationBarBackground(
       modifier = Modifier.graphicsLayer { alpha = if (calculatePosition(dismissState) > 0.1f) 1f else 0f },
       color = MaterialTheme.colors.background.mixWith(MaterialTheme.colors.onBackground, alpha = 1 - userPickerAlpha())
     )

@@ -1,6 +1,12 @@
 package chat.simplex.common.views.chatlist
 
 import androidx.compose.foundation.interaction.*
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -60,19 +66,43 @@ internal fun ChatListTabBar(
       val segment = maxWidth / 3
       val presses = remember { List(3) { MutableInteractionSource() } }
       val pressed = presses.map { it.collectIsPressedAsState().value }.indexOf(true)
-      val target = if (pressed >= 0 && backdrop != null) pressed else selected
-      val offset by animateDpAsState(segment * target, spring(dampingRatio = 0.76f, stiffness = 470f))
-      val lift by animateFloatAsState(if (pressed >= 0 && backdrop != null) 1f else 0f)
-      val base = if (light) Color.White else Color(0xFF49494E)
-      val lens = if (backdrop == null) Modifier.background(base, CircleShape) else {
-        val shine = Brush.linearGradient(listOf(Color.White.copy(alpha = if (light) 0.95f else 0.36f),
-          Color.Transparent, Color.White.copy(alpha = 0.14f)))
-        Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.39f + lift * 0.21f), base.copy(alpha = 0.53f), base.copy(alpha = 0.78f))), CircleShape).border(1.dp, shine, CircleShape)
-      }
+      var drag by remember { mutableStateOf<Float?>(null) }
+      val segmentPx = with(LocalDensity.current) { segment.toPx().coerceAtLeast(1f) }
+      val target = drag ?: (if (pressed >= 0 && backdrop != null) pressed else selected).toFloat()
+      val springPosition by animateFloatAsState(target, spring(dampingRatio = 0.80f, stiffness = 580f))
+      val position = drag ?: springPosition
+      val held = backdrop != null && (drag != null || pressed >= 0)
+      val lift by animateFloatAsState(if (held) 1f else 0f, spring(stiffness = 640f))
       Box(Modifier.matchParentSize()) {
-        Spacer(Modifier.offset(x = offset).width(segment).fillMaxHeight().graphicsLayer { scaleX = 1f + 0.04f * lift; scaleY = 1f + 0.08f * lift }.then(lens))
+        val frame = Modifier.offset { IntOffset((position * segmentPx).roundToInt(), 0) }.width(segment).fillMaxHeight()
+          .graphicsLayer { scaleX = 1f + 0.045f * lift; scaleY = 1f + 0.065f * lift }
+        if (backdrop == null) {
+          Spacer(frame.background(if (light) Color.White else Color(0xFF49494E), CircleShape))
+        } else {
+          val tint = if (light) Color.White.copy(alpha = 0.57f) else Color(0xFF8792A3).copy(alpha = 0.16f + 0.08f * lift)
+          AnexGlassSurface(frame, backdrop = backdrop, tint = tint, lens = true) {}
+        }
       }
-      Row(Modifier.fillMaxWidth().selectableGroup()) {
+      val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+      Row(Modifier.fillMaxWidth().selectableGroup().draggable(
+        state = rememberDraggableState { delta ->
+          drag = ((drag ?: selected.toFloat()) + delta / segmentPx).coerceIn(0f, 2f)
+        },
+        orientation = Orientation.Horizontal, reverseDirection = rtl,
+        onDragStarted = { point ->
+          val index = (point.x / segmentPx - 0.5f).coerceIn(0f, 2f)
+          drag = if (rtl) 2f - index else index
+        },
+        onDragStopped = {
+          val destination = drag?.roundToInt()
+          drag = null
+          when (destination) {
+            0 -> onChats()
+            1 -> onContacts()
+            2 -> onProfile()
+          }
+        }
+      )) {
         @Composable
         fun RowScope.Tab(index: Int, icon: ImageResource, label: String, click: () -> Unit) {
           Column(

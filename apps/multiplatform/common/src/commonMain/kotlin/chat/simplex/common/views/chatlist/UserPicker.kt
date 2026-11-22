@@ -142,13 +142,14 @@ fun UserPicker(
   val oneHandUI = remember { appPrefs.oneHandUI.state }
   val iconColor = MaterialTheme.colors.secondaryVariant
   val background = if (appPlatform.isAndroid) MaterialTheme.colors.background.mixWith(MaterialTheme.colors.onBackground, alpha = 1 - userPickerAlpha()) else MaterialTheme.colors.surface
+  val glassPicker = LocalGlassBackdrop.current != null && appPlatform.isAndroid
   PlatformUserPicker(
     modifier = Modifier
       .height(IntrinsicSize.Min)
       .fillMaxWidth()
-      .then(if (newChat.isVisible()) Modifier.shadow(8.dp, clip = true, ambientColor = background) else Modifier)
+      .then(if (!glassPicker && newChat.isVisible()) Modifier.shadow(8.dp, clip = true, ambientColor = background) else Modifier)
       .padding(top = if (appPlatform.isDesktop && oneHandUI.value) 7.dp else 0.dp)
-      .background(background)
+      .then(if (glassPicker) Modifier else Modifier.background(background))
       .padding(bottom = USER_PICKER_SECTION_SPACING - DEFAULT_MIN_SECTION_ITEM_PADDING_VERTICAL),
     pickerState = userPickerState
   ) {
