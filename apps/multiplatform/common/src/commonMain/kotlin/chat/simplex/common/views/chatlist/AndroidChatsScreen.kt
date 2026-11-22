@@ -82,6 +82,7 @@ internal fun AndroidChatsScreen(
   }
   fun select(next: ActiveFilter?) {
     search.value = TextFieldValue()
+    if (picker.value.isVisible()) picker.value = AnimatedViewState.HIDING
     filter.value = next
     scope.launch { if (list.layoutInfo.totalItemsCount > 0) list.scrollToItem(0) }
   }
@@ -122,9 +123,14 @@ internal fun AndroidChatsScreen(
         candidate.value?.let { ConnectByNameRow(it, search, candidate, close = null) }
         ChatListFilters(filter.value, ::select)
       }
+      Box(Modifier.fillMaxSize().padding(bottom = if (pickerState.isGone()) 0.dp else barHeight + bottomInset + 8.dp)) {
+        tryOrShowError("UserPicker", error = {}) {
+          UserPicker(chatModel, picker, setPerformLA)
+        }
+      }
       // Fade the scrolling content before it passes under the floating controls.
       if (keyboard != KeyboardState.Opened) {
-        androidx.compose.animation.AnimatedVisibility(barVisible, Modifier.align(Alignment.BottomCenter),
+        androidx.compose.animation.AnimatedVisibility(barVisible || pickerState.isVisible(), Modifier.align(Alignment.BottomCenter),
           enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
           Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(
             theme.background.copy(alpha = 0f), theme.background.copy(alpha = 0.32f), theme.background.copy(alpha = 0.85f)

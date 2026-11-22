@@ -291,13 +291,6 @@ fun ChatListView(chatModel: ChatModel, userPickerState: MutableStateFlow<Animate
       SetNotificationsModeAdditions()
       LaunchedEffect(Unit) { wasAllowedToSetupNotifications.value = true }
     }
-    tryOrShowError("UserPicker", error = {}) {
-      UserPicker(
-        chatModel = chatModel,
-        userPickerState = userPickerState,
-        setPerformLA = AppLock::setPerformLA
-      )
-    }
   }
 }
 

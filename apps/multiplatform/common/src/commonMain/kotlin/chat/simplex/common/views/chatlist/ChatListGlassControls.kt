@@ -53,7 +53,7 @@ internal fun ChatListTabBar(
     contacts -> 1
     else -> 0
   }
-  val ink = MaterialTheme.colors.onBackground
+  val ink = readableGlassInk(MaterialTheme.colors.onBackground, AnexGlass.fill(MaterialTheme.colors.isLight).compositeOver(MaterialTheme.colors.background))
   val light = MaterialTheme.colors.isLight
   AnexGlassSurface(Modifier.widthIn(max = 360.dp).fillMaxWidth(), backdrop = backdrop, solid = backdrop == null) {
     BoxWithConstraints(Modifier.fillMaxWidth().padding(5.dp)) {
