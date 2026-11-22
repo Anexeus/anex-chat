@@ -122,10 +122,11 @@ fun SimpleXInfoLayout(
       modifier = Modifier.fillMaxSize(),
       image = {
         Column(Modifier.padding(vertical = DEFAULT_PADDING_HALF), horizontalAlignment = Alignment.CenterHorizontally) {
-          OnboardingImage(
-            MR.images.intro, MR.images.intro_light, MR.images.ic_forum,
-            modifier = if (appPlatform.isAndroid) Modifier.fillMaxWidth() else Modifier.heightIn(max = 280.dp)
-          )
+          if (appPlatform.isAndroid) {
+            Image(painterResource(MR.images.anex_logo), null, Modifier.size(144.dp))
+          } else {
+            OnboardingImage(MR.images.intro, MR.images.intro_light, MR.images.ic_forum, Modifier.heightIn(max = 280.dp))
+          }
       }
     },
     content = {
