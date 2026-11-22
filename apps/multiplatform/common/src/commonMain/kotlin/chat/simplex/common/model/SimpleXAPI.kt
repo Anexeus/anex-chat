@@ -142,7 +142,9 @@ class AppPreferences {
   val privacyAskToApproveRelays = mkBoolPreference(SHARED_PREFS_PRIVACY_ASK_TO_APPROVE_RELAYS, true)
   val privacyMediaBlurRadius = mkIntPreference(SHARED_PREFS_PRIVACY_MEDIA_BLUR_RADIUS, 0)
   // Blur broken on Android 12, see https://github.com/chrisbanes/haze/issues/77. And not available before 12
-  val anexGlassEffects = mkBoolPreference("AnexGlassEffects", true)
+  val anexGlassMode = mkEnumPreference("AnexGlassMode",
+    if (settings.getBoolean("AnexGlassEffects", true)) GlassMode.Auto else GlassMode.Off
+  ) { GlassMode.entries.firstOrNull { it.name == this } }
   val deviceSupportsBlur = appPlatform.isDesktop || (platform.androidApiLevel ?: 0) >= 32
   val appearanceBarsBlurRadius = mkIntPreference(SHARED_PREFS_APPEARANCE_BARS_BLUR_RADIUS, if (deviceSupportsBlur) 50 else 0)
   val experimentalCalls = mkBoolPreference(SHARED_PREFS_EXPERIMENTAL_CALLS, false)
@@ -9211,3 +9213,5 @@ fun showClientNoticeAlert(server: String, preset: Boolean, expiresAt: Instant?) 
     }
   }
 }
+
+enum class GlassMode { Auto, On, Off }

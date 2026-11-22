@@ -17,13 +17,18 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import chat.simplex.common.model.ChatController.appPrefs
+import chat.simplex.common.model.GlassMode
+import androidx.compose.material.LocalContentColor
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import chat.simplex.common.views.helpers.copyViewToAppBar
@@ -39,18 +44,36 @@ internal object AnexGlass {
   fun fill(light: Boolean) = if (light) Color(0xB9F1F1F3) else Color(0xA62A2A2D)
   fun rim(light: Boolean) = if (light) Color(0xBFFFFFFF) else Color(0x60FFFFFF)
   fun edge(light: Boolean) = if (light) Color(0x35555658) else Color(0x24FFFFFF)
-  fun sheen(light: Boolean) = if (light) Color(0x50FFFFFF) else Color(0x15FFFFFF)
+  fun sheen(light: Boolean) = if (light) Color(0x50FFFFFF) else Color(0x38FFFFFF)
 }
 
 @Composable
 internal expect fun systemPrefersSolidGlass(): Boolean
+
+@Composable
+internal fun glassEnabled() = when (appPrefs.anexGlassMode.state.value) {
+  GlassMode.Auto -> !systemPrefersSolidGlass()
+  GlassMode.On -> true
+  GlassMode.Off -> false
+}
+
+internal val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
+internal val LocalGlassConversation = staticCompositionLocalOf { false }
+internal val LocalGlassMenu = staticCompositionLocalOf { false }
+
+internal fun readableGlassInk(preferred: Color, surface: Color): Color {
+  val light = surface.luminance()
+  val ink = preferred.luminance()
+  if ((maxOf(light, ink) + 0.05f) / (minOf(light, ink) + 0.05f) >= 4.5f) return preferred
+  return if (light > 0.179f) Color.Black else Color.White
+}
 
 @Stable
 internal class GlassBackdrop(private val layer: GraphicsLayer?) {
   private var origin by mutableStateOf<Offset?>(null)
 
   fun capture(modifier: Modifier): Modifier = if (layer == null) modifier else modifier
-    .onGloballyPositioned { origin = it.positionInRoot() }
+    .onGloballyPositioned { origin = it.positionOnScreen() }
     .copyViewToAppBar(1, layer)
 
   @Composable
@@ -59,7 +82,7 @@ internal class GlassBackdrop(private val layer: GraphicsLayer?) {
     var position by remember { mutableStateOf<Offset?>(null) }
     Box(
       Modifier.matchParentSize()
-        .onGloballyPositioned { position = it.positionInRoot() }
+        .onGloballyPositioned { position = it.positionOnScreen() }
         .blur(AnexGlass.blurRadius, BlurredEdgeTreatment.Rectangle)
         .drawBehind {
           val source = origin ?: return@drawBehind
@@ -98,7 +121,8 @@ internal fun AnexGlassSurface(
       .border(1.dp, MaterialTheme.colors.onBackground.copy(alpha = 0.32f), shape), content = content)
     return
   }
-  val rim = Brush.verticalGradient(listOf(AnexGlass.rim(light), AnexGlass.edge(light)))
+  val rim = Brush.linearGradient(listOf(Color.White.copy(alpha = 0.86f), AnexGlass.edge(light),
+    AnexGlass.rim(light), AnexGlass.edge(light), Color.White.copy(alpha = 0.68f)))
   val highlight = Brush.verticalGradient(
     0f to AnexGlass.sheen(light),
     0.55f to Color.Transparent,
@@ -116,6 +140,8 @@ internal fun AnexGlassSurface(
         .background(fill)
         .background(highlight)
     )
-    content()
+    CompositionLocalProvider(LocalContentColor provides readableGlassInk(MaterialTheme.colors.onBackground, fill.compositeOver(background))) {
+      content()
+    }
   }
 }

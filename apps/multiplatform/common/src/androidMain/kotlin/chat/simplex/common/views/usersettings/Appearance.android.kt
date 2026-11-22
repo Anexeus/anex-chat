@@ -1,5 +1,6 @@
 package chat.simplex.common.views.usersettings
 
+import SectionTextFooter
 import SectionBottomSpacer
 import SectionDividerSpaced
 import SectionView
@@ -105,7 +106,19 @@ fun AppearanceScope.AppearanceLayout(
       }
       //      }
 
-      SettingsPreferenceItem(icon = null, stringResource(MR.strings.anex_glass_effects), appPrefs.anexGlassEffects)
+      val glass = appPrefs.anexGlassMode
+      androidx.compose.material.Text(stringResource(MR.strings.anex_glass_effects), Modifier.padding(horizontal = 16.dp))
+      Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp)) {
+        GlassMode.entries.forEach { mode ->
+          androidx.compose.material.OutlinedButton(onClick = { glass.set(mode) }, modifier = Modifier.weight(1f).padding(3.dp),
+            colors = androidx.compose.material.ButtonDefaults.outlinedButtonColors(
+              backgroundColor = if (glass.state.value == mode) colors.primary else colors.surface,
+              contentColor = if (glass.state.value == mode) colors.onPrimary else colors.onSurface)) {
+            androidx.compose.material.Text(mode.name)
+          }
+        }
+      }
+      SectionTextFooter(stringResource(MR.strings.anex_glass_description))
       SettingsPreferenceItem(icon = null, stringResource(MR.strings.one_hand_ui), ChatModel.controller.appPrefs.oneHandUI) { enabled ->
         if (enabled) appPrefs.chatBottomBar.set(true)
       }

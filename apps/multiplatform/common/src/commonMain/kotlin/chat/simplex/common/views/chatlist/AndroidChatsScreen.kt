@@ -57,7 +57,7 @@ internal fun AndroidChatsScreen(
   search: MutableState<TextFieldValue>, list: LazyListState, picker: MutableStateFlow<AnimatedViewState>,
   setPerformLA: (Boolean) -> Unit, stopped: Boolean
 ) {
-  val glassEnabled = appPrefs.anexGlassEffects.state.value && !systemPrefersSolidGlass()
+  val glassEnabled = glassEnabled()
   val backdrop = if (glassEnabled) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31) else null
   val theme = MaterialTheme.colors
   val filter = chatModel.activeChatTagFilter
