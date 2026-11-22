@@ -335,6 +335,7 @@ private fun AcceptConditionsButton(
 }
 
 private fun completeOnboarding() {
+  queueQuickGuide()
   appPrefs.onboardingStage.set(OnboardingStage.OnboardingComplete)
 }
 

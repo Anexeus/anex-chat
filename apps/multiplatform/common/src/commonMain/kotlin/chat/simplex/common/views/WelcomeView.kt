@@ -379,14 +379,14 @@ fun createProfileInProfiles(chatModel: ChatModel, displayName: String, shortDesc
       chatModel.controller.startChat(user, configureAnexServers = true)
       chatModel.controller.appPrefs.onboardingStage.set(OnboardingStage.Step4_NetworkCommitments)
     } else {
-      if (appPlatform.isAndroid && rhId == null) {
+      val readyForGuide = appPlatform.isAndroid && rhId == null &&
         chatModel.controller.applyAnexServerDefaults(user.userId)
-      }
       val users = chatModel.controller.listUsers(rhId)
       chatModel.users.clear()
       chatModel.users.addAll(users)
       chatModel.controller.getUserChatData(rhId)
       close()
+      if (readyForGuide) queueQuickGuide()
     }
   }
 }

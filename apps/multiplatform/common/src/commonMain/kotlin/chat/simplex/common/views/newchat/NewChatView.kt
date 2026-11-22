@@ -50,7 +50,7 @@ enum class NewChatOption {
 }
 
 @Composable
-fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRCodeScanner: Boolean = false, onboarding: Boolean = false, close: () -> Unit) {
+fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRCodeScanner: Boolean = false, onboarding: Boolean = false, quickAdd: Boolean = false, close: () -> Unit) {
   val selection = remember { stateGetOrPut("selection") { selection } }
   val showQRCodeScanner = remember { stateGetOrPut("showQRCodeScanner") { showQRCodeScanner } }
   val contactConnection: MutableState<PendingContactConnection?> = rememberSaveable(stateSaver = serializableSaver()) { mutableStateOf(chatModel.showingInvitation.value?.conn) }
@@ -119,7 +119,7 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
   } else {
     BoxWithConstraints {
       ColumnWithScrollBar {
-        AppBarTitle(stringResource(MR.strings.new_chat), hostDevice(rh?.remoteHostId), bottomPadding = DEFAULT_PADDING)
+        AppBarTitle(if (quickAdd) "Add a friend" else stringResource(MR.strings.new_chat), hostDevice(rh?.remoteHostId), bottomPadding = DEFAULT_PADDING)
         val scope = rememberCoroutineScope()
         val pagerState = rememberPagerState(
           initialPage = selection.value.ordinal,
@@ -127,6 +127,7 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
         ) { NewChatOption.values().size }
         KeyChangeEffect(pagerState.currentPage) {
           selection.value = NewChatOption.values()[pagerState.currentPage]
+          if (quickAdd) showQRCodeScanner.value = selection.value == NewChatOption.CONNECT
         }
         @Composable fun Options() {
         TabRow(
@@ -135,6 +136,11 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
           contentColor = MaterialTheme.colors.primary,
         ) {
           tabTitles.forEachIndexed { index, it ->
+            val label = when {
+              quickAdd && index == NewChatOption.CONNECT.ordinal -> "Scan or paste a code"
+              appPlatform.isAndroid && index == NewChatOption.INVITE.ordinal -> "My code"
+              else -> it
+            }
             LeadingIconTab(
               selected = pagerState.currentPage == index,
               onClick = {
@@ -142,11 +148,11 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
                   pagerState.animateScrollToPage(index)
                 }
               },
-              text = { Text(if (appPlatform.isAndroid && index == NewChatOption.INVITE.ordinal) "My code" else it, fontSize = 13.sp) },
+              text = { Text(label, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) },
               icon = {
                 Icon(
                   if (NewChatOption.INVITE.ordinal == index) painterResource(MR.images.ic_repeat_one) else painterResource(MR.images.ic_qr_code),
-                  it
+                  null
                 )
               },
               selectedContentColor = MaterialTheme.colors.primary,
@@ -167,10 +173,12 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
             Spacer(Modifier.height(DEFAULT_PADDING))
             when (index) {
               NewChatOption.INVITE.ordinal -> {
-                PrepareAndInviteView(rh?.remoteHostId, contactConnection, connLinkInvitation, creatingConnReq)
+                PrepareAndInviteView(rh?.remoteHostId, contactConnection, connLinkInvitation, creatingConnReq, quickAdd = quickAdd)
               }
               NewChatOption.CONNECT.ordinal -> {
-                ConnectView(rh?.remoteHostId, showQRCodeScanner, pastedLink, close)
+                if (!quickAdd || pagerState.currentPage == index) {
+                  ConnectView(rh?.remoteHostId, showQRCodeScanner, pastedLink, close, quickAdd = quickAdd)
+                }
               }
             }
             SectionBottomSpacer()
@@ -182,13 +190,14 @@ fun ModalData.NewChatView(rh: RemoteHostInfo?, selection: NewChatOption, showQRC
 }
 
 @Composable
-private fun PrepareAndInviteView(rhId: Long?, contactConnection: MutableState<PendingContactConnection?>, connLinkInvitation: CreatedConnLink, creatingConnReq: MutableState<Boolean>, onboarding: Boolean = false) {
+private fun PrepareAndInviteView(rhId: Long?, contactConnection: MutableState<PendingContactConnection?>, connLinkInvitation: CreatedConnLink, creatingConnReq: MutableState<Boolean>, onboarding: Boolean = false, quickAdd: Boolean = false) {
   if (connLinkInvitation.connFullLink.isNotEmpty()) {
     InviteView(
       rhId,
       connLinkInvitation = connLinkInvitation,
       contactConnection = contactConnection,
       onboarding = onboarding,
+      quickAdd = quickAdd,
     )
   } else if (creatingConnReq.value) {
     CreatingLinkProgressView()
@@ -468,7 +477,7 @@ fun ActiveProfilePicker(
 }
 
 @Composable
-private fun InviteView(rhId: Long?, connLinkInvitation: CreatedConnLink, contactConnection: MutableState<PendingContactConnection?>, onboarding: Boolean = false) {
+private fun InviteView(rhId: Long?, connLinkInvitation: CreatedConnLink, contactConnection: MutableState<PendingContactConnection?>, onboarding: Boolean = false, quickAdd: Boolean = false) {
   val showShortLink = remember { mutableStateOf(true) }
 
   if (BuildConfigCommon.SIMPLEX_ASSETS) {
@@ -486,7 +495,19 @@ private fun InviteView(rhId: Long?, connLinkInvitation: CreatedConnLink, contact
     Spacer(Modifier.height(10.dp))
   }
 
-  if (onboarding) {
+  if (quickAdd) {
+    val clipboard = LocalClipboardManager.current
+    Text("Ask your friend to scan this one-time code.", Modifier.padding(horizontal = DEFAULT_PADDING, vertical = 8.dp))
+    SimpleXCreatedLinkQRCode(connLinkInvitation, short = showShortLink.value, onShare = { chatModel.markShowingInvitationUsed() })
+    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+      AnexGlassSurface(solid = !glassEnabled()) {
+        TextButton(onClick = {
+          chatModel.markShowingInvitationUsed()
+          clipboard.shareText(connLinkInvitation.simplexChatUri(short = showShortLink.value))
+        }) { Text("Share invite link") }
+      }
+    }
+  } else if (onboarding) {
     Text(
       stringResource(MR.strings.onboarding_send_1_time_link),
       Modifier.fillMaxWidth().padding(horizontal = DEFAULT_PADDING, vertical = DEFAULT_PADDING_HALF),
@@ -628,7 +649,7 @@ fun AddContactLearnMoreButton() {
 }
 
 @Composable
-private fun ConnectView(rhId: Long?, showQRCodeScanner: MutableState<Boolean>, pastedLink: MutableState<String>, close: () -> Unit, onboarding: Boolean = false) {
+private fun ConnectView(rhId: Long?, showQRCodeScanner: MutableState<Boolean>, pastedLink: MutableState<String>, close: () -> Unit, onboarding: Boolean = false, quickAdd: Boolean = false) {
   DisposableEffect(Unit) {
     onDispose {
       connectProgressManager.cancelConnectProgress()
@@ -649,7 +670,19 @@ private fun ConnectView(rhId: Long?, showQRCodeScanner: MutableState<Boolean>, p
   }
 
   SectionView(stringResource(MR.strings.paste_the_link_you_received), headerBottomPadding = 5.dp) {
-    PasteLinkView(rhId, pastedLink, showQRCodeScanner, close)
+    if (quickAdd && pastedLink.value.isEmpty()) {
+      val clipboard = LocalClipboardManager.current
+      var input by rememberSaveable { mutableStateOf("") }
+      Column(Modifier.fillMaxWidth().padding(horizontal = DEFAULT_PADDING)) {
+        OutlinedTextField(input, { input = it }, Modifier.fillMaxWidth(), label = { Text("Invite link") }, singleLine = true)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          TextButton(onClick = { clipboard.getText()?.text?.let { input = it } }) { Text("Paste") }
+          TextButton(enabled = input.isNotBlank(), onClick = {
+            submitPastedLink(rhId, input, pastedLink, showQRCodeScanner, close)
+          }) { Text("Connect") }
+        }
+      }
+    } else PasteLinkView(rhId, pastedLink, showQRCodeScanner, close)
   }
 
   if (appPlatform.isAndroid) {
@@ -679,22 +712,7 @@ private fun PasteLinkView(rhId: Long?, pastedLink: MutableState<String>, showQRC
     val clipboard = LocalClipboardManager.current
     @Composable fun Paste() { SectionItemView({
       val str = clipboard.getText()?.text ?: return@SectionItemView
-      when (val target = strConnectTarget(str.trim())) {
-        is ConnectTarget.Link -> {
-          pastedLink.value = target.text
-          showQRCodeScanner.value = false
-          withBGApi { connect(rhId, target.text, close) { pastedLink.value = "" } }
-        }
-        is ConnectTarget.Name -> {
-          pastedLink.value = target.text
-          showQRCodeScanner.value = false
-          withBGApi { connect(rhId, target.text, close) { pastedLink.value = "" } }
-        }
-        null -> AlertManager.shared.showAlertMsg(
-          title = generalGetString(MR.strings.invalid_contact_link),
-          text = generalGetString(MR.strings.the_text_you_pasted_is_not_a_link)
-        )
-      }
+      submitPastedLink(rhId, str, pastedLink, showQRCodeScanner, close)
     }) {
       Box(Modifier.weight(1f)) {
         Text(stringResource(MR.strings.tap_to_paste_link), color = MaterialTheme.colors.primary)
@@ -717,6 +735,22 @@ private fun PasteLinkView(rhId: Long?, pastedLink: MutableState<String>, showQRC
       }
     }
   }
+}
+
+private fun submitPastedLink(rhId: Long?, input: String, pastedLink: MutableState<String>,
+                             showQRCodeScanner: MutableState<Boolean>, close: () -> Unit) {
+  val link = when (val target = strConnectTarget(input.trim())) {
+    is ConnectTarget.Link -> target.text
+    is ConnectTarget.Name -> target.text
+    null -> {
+      AlertManager.shared.showAlertMsg(generalGetString(MR.strings.invalid_contact_link),
+        generalGetString(MR.strings.the_text_you_pasted_is_not_a_link))
+      return
+    }
+  }
+  pastedLink.value = link
+  showQRCodeScanner.value = false
+  withBGApi { connect(rhId, link, close) { pastedLink.value = "" } }
 }
 
 @Composable

@@ -138,6 +138,8 @@ fun MainScreen() {
   Box {
     val unauthorized = remember { derivedStateOf { AppLock.userAuthorized.value != true } }
     val onboarding by remember { chatModel.controller.appPrefs.onboardingStage.state }
+    val guide by appPrefs.quickGuide.state
+    val showQuickGuide = appPlatform.isAndroid && guide == QuickGuideState.Pending && chatModel.currentUser.value != null
     val localUserCreated = chatModel.localUserCreated.value
     var showInitializationView by remember { mutableStateOf(false) }
     when {
@@ -166,7 +168,10 @@ fun MainScreen() {
           }
           if (appPlatform.isAndroid) {
             AndroidWrapInCallLayout {
-              AndroidScreen(userPickerState)
+              if (showQuickGuide && !unauthorized.value) {
+                val finish = { appPrefs.quickGuide.set(QuickGuideState.Seen) }
+                QuickGuideScreen(firstTime = true, close = finish)
+              } else AndroidScreen(userPickerState)
             }
           } else {
             DesktopScreen(userPickerState)
@@ -242,7 +247,8 @@ fun MainScreen() {
       ModalManager.fullscreen.showOneTimePasscodeInView()
       AlertManager.privacySensitive.showInView()
       if (onboarding == OnboardingStage.OnboardingComplete) {
-        LaunchedEffect(chatModel.chatRunning.value, chatModel.currentUser.value, chatModel.appOpenUrl.value) {
+        LaunchedEffect(chatModel.chatRunning.value, chatModel.currentUser.value, chatModel.appOpenUrl.value, showQuickGuide) {
+          if (showQuickGuide) return@LaunchedEffect
           val (rhId, url) = chatModel.appOpenUrl.value ?: (null to null)
           if (url != null && chatModel.chatRunning.value == true) {
             chatModel.appOpenUrl.value = null

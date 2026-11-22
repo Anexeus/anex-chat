@@ -70,6 +70,7 @@ internal fun AndroidChatsScreen(
   val chats = filteredChats(linkSearch, linkMatches, search.value.text, chatModel.chats.value, filter.value)
   val scope = rememberCoroutineScope()
   val keyboard by getKeyboardState()
+  val view = LocalMultiplatformView()
   val running = chatModel.chatRunning.value
   val pickerState by picker.collectAsState()
   val density = LocalDensity.current
@@ -119,9 +120,18 @@ internal fun AndroidChatsScreen(
         if (keyboard != KeyboardState.Opened) {
           ChatsHeader(glassEnabled, stopped, running == true, openSettings)
         }
-        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(CircleShape)
-          .background(theme.onBackground.copy(alpha = if (theme.isLight) 0.065f else 0.10f).compositeOver(theme.background))) {
-          ChatListSearchBar(list, search, linkSearch, linkMatches, candidate)
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+          Box(Modifier.weight(1f).clip(CircleShape)
+            .background(theme.onBackground.copy(alpha = if (theme.isLight) 0.065f else 0.10f).compositeOver(theme.background))) {
+            ChatListSearchBar(list, search, linkSearch, linkMatches, candidate)
+          }
+          Spacer(Modifier.width(8.dp))
+          ChatListRoundButton(MR.images.ic_add, "Add a friend", glassEnabled, accent = true, enabled = running == true && !stopped) {
+            hideKeyboard(view, clearFocus = true)
+            ModalManager.start.showModalCloseable(glassNavigation = true) { close ->
+              NewChatView(chatModel.currentRemoteHost.value, NewChatOption.INVITE, quickAdd = true, close = close)
+            }
+          }
         }
         candidate.value?.let { ConnectByNameRow(it, search, candidate, close = null) }
         ChatListFilters(filter.value, ::select)
@@ -201,7 +211,7 @@ private fun ChatsHeader(glass: Boolean, stopped: Boolean, running: Boolean, open
       }
     }
     Box {
-      ChatListRoundButton(MR.images.ic_add, stringResource(MR.strings.new_chat), glass, accent = true, enabled = running && !stopped) {
+      ChatListRoundButton(MR.images.ic_edit, stringResource(MR.strings.new_chat), glass, enabled = running && !stopped) {
         newChat.value = true
       }
       DefaultDropdownMenu(newChat) {

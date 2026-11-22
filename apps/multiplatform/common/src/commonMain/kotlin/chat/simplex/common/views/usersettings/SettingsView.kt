@@ -35,6 +35,7 @@ import chat.simplex.common.views.migration.MigrateFromDeviceView
 import chat.simplex.common.views.onboarding.ANEX_SOURCE_URL
 import chat.simplex.common.views.onboarding.GetStakeView
 import chat.simplex.common.views.onboarding.SimpleXInfo
+import chat.simplex.common.views.onboarding.QuickGuideScreen
 import chat.simplex.common.views.onboarding.WhatsNewView
 import chat.simplex.common.views.onboarding.crowdfundingAvailable
 import chat.simplex.common.views.usersettings.networkAndServers.NetworkAndServersView
@@ -173,6 +174,11 @@ fun HelpAndSupportView(
     AppBarTitle(stringResource(MR.strings.help_and_support))
 
     SectionView(stringResource(MR.strings.settings_section_title_help)) {
+      if (appPlatform.isAndroid) {
+        SettingsActionItem(painterResource(MR.images.ic_info), "Quick guide", {
+          ModalManager.start.showCustomModal { close -> QuickGuideScreen(firstTime = false, close = close) }
+        })
+      }
       SettingsActionItem(painterResource(MR.images.ic_help), stringResource(MR.strings.how_to_use_simplex_chat), showModal { HelpView(userDisplayName) }, disabled = stopped)
       if (!appPlatform.isAndroid) {
         SettingsActionItem(painterResource(MR.images.ic_add), stringResource(MR.strings.whats_new), showCustomModal { _, close -> WhatsNewView(viaSettings = true, close = close) }, disabled = stopped)
