@@ -252,7 +252,7 @@ class AppPreferences {
     jsonCoerceInputValues.decodeFromString(MapSerializer(String.serializer(), ThemeOverrides.serializer()), it)
   }, settingsThemes)
   val themeOverrides = mkThemeOverridesPreference()
-  val profileImageCornerRadius = mkFloatPreference(SHARED_PREFS_PROFILE_IMAGE_CORNER_RADIUS, 22.5f)
+  val profileImageCornerRadius = mkFloatPreference(SHARED_PREFS_PROFILE_IMAGE_CORNER_RADIUS, if (appPlatform.isAndroid) 50f else 22.5f)
   val chatItemRoundness = mkFloatPreference(SHARED_PREFS_CHAT_ITEM_ROUNDNESS, 0.75f)
   val chatItemTail = mkBoolPreference(SHARED_PREFS_CHAT_ITEM_TAIL, true)
   val fontScale = mkFloatPreference(SHARED_PREFS_FONT_SCALE, 1f)

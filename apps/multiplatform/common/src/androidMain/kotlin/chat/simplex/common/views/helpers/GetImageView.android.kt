@@ -145,14 +145,16 @@ actual fun GetImageBottomSheet(
   hideBottomSheet: () -> Unit
 ) {
   val context = LocalContext.current
-  val processPickedImage = { uri: Uri? ->
-    if (uri != null) {
-      val uri = uri.toURI()
-      val bitmap = getBitmapFromUri(uri)
-      if (bitmap != null) {
-        imageBitmap.value = uri
-        onImageChange(bitmap)
-      }
+  var pendingUri by rememberSaveable { mutableStateOf<String?>(null) }
+  val processPickedImage: (Uri?) -> Unit = { uri -> pendingUri = uri?.toString() }
+  pendingUri?.let { raw ->
+    val uri = remember(raw) { Uri.parse(raw).toURI() }
+    val bitmap = remember(uri) { getBitmapFromUri(uri) }
+    if (bitmap == null) LaunchedEffect(uri) { pendingUri = null }
+    else AvatarCrop(bitmap, cancel = { pendingUri = null }) { cropped ->
+      imageBitmap.value = uri
+      onImageChange(cropped)
+      pendingUri = null
     }
   }
   val galleryLauncher = rememberLauncherForActivityResult(contract = PickFromGallery(), processPickedImage)

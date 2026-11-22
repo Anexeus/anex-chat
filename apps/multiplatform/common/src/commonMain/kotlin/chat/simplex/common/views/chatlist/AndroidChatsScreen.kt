@@ -47,7 +47,7 @@ internal val chatListAvatarGap: Dp
 internal fun ChatListAvatar(content: @Composable (Dp) -> Unit) {
   val size = chatListAvatarSize
   if (LocalAnexChatRow.current) {
-    Box(Modifier.size(size).clip(CircleShape).background(MaterialTheme.colors.onBackground.copy(alpha = 0.055f)),
+    Box(ProfileIconModifier(size, padding = false).background(MaterialTheme.colors.onBackground.copy(alpha = 0.055f)),
       contentAlignment = Alignment.Center) { content(size) }
   } else {
     content(size)
