@@ -419,9 +419,10 @@ private fun RecordVoiceButton(interactionSource: MutableInteractionSource) {
     Icon(
       painterResource(MR.images.ic_keyboard_voice_filled),
       stringResource(MR.strings.icon_descr_record_voice_message),
-      tint = MaterialTheme.colors.primary,
+      tint = if (LocalGlassConversation.current) readableGlassInk(Color.White, MaterialTheme.colors.primary) else MaterialTheme.colors.primary,
       modifier = Modifier
         .size(34.dp)
+        .then(if (LocalGlassConversation.current) Modifier.background(MaterialTheme.colors.primary, CircleShape) else Modifier)
         .padding(4.dp)
     )
   }

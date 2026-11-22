@@ -1019,187 +1019,200 @@ fun ChatLayout(
       sheetShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
     ) {
       val composeViewHeight = remember { mutableStateOf(0.dp) }
-      Box(Modifier.fillMaxSize().chatViewBackgroundModifier(MaterialTheme.colors, MaterialTheme.wallpaper, LocalAppBarHandler.current?.backgroundGraphicsLayerSize, LocalAppBarHandler.current?.backgroundGraphicsLayer, drawWallpaper = chatsCtx.secondaryContextFilter == null, drawWallpaperImage = !LocalTerminalLayout.current)) {
-        val remoteHostId = remember { remoteHostId }.value
-        val chat = remember { chat }.value
-        val chatInfo = chat?.chatInfo
-        val oneHandUI = remember { appPrefs.oneHandUI.state }
-        val chatBottomBar = remember { appPrefs.chatBottomBar.state }
-        val composeViewFocusRequester = remember { if (appPlatform.isDesktop) FocusRequester() else null }
-        AdaptingBottomPaddingLayout(Modifier, CHAT_COMPOSE_LAYOUT_ID, composeViewHeight) {
-          if (chat != null) {
-            val selectionManager = LocalSelectionManager.current
-            if (selectionManager != null) {
-              LaunchedEffect(selectionManager) {
-                snapshotFlow { selectionManager.selectionState != SelectionState.Idle }
-                  .collect { chatsCtx.chatState.selectionActive = it }
-              }
-            }
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-              // disables scrolling to top of chat item on click inside the bubble
-              CompositionLocalProvider(
-                LocalBringIntoViewSpec provides object : BringIntoViewSpec {
-                  override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
+      val floating = appPlatform.isAndroid && chatsCtx.secondaryContextFilter == null
+      val backdrop = if (floating && glassEnabled()) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31) else null
+      val wallpaper = Modifier.chatViewBackgroundModifier(MaterialTheme.colors, MaterialTheme.wallpaper, LocalAppBarHandler.current?.backgroundGraphicsLayerSize, LocalAppBarHandler.current?.backgroundGraphicsLayer, drawWallpaper = chatsCtx.secondaryContextFilter == null, drawWallpaperImage = !LocalTerminalLayout.current)
+      Box(Modifier.fillMaxSize().then(if (floating) Modifier else wallpaper)) {
+        if (floating) Spacer((backdrop?.capture(Modifier.matchParentSize()) ?: Modifier.matchParentSize()).then(wallpaper))
+        val colors = MaterialTheme.appColors
+        val sent = colors.sentMessage
+        val received = colors.receivedMessage
+        val paper = MaterialTheme.colors.background
+        val bubbleColors = remember(colors, sent, received, paper, floating) {
+          if (floating) colors.copy(sentMessage = sent.compositeOver(paper), receivedMessage = received.compositeOver(paper)) else colors
+        }
+        CompositionLocalProvider(LocalGlassConversation provides floating, LocalGlassBackdrop provides backdrop, LocalAppColors provides bubbleColors) {
+          val remoteHostId = remember { remoteHostId }.value
+          val chat = remember { chat }.value
+          val chatInfo = chat?.chatInfo
+          val oneHandUI = if (LocalGlassConversation.current) rememberUpdatedState(false) else remember { appPrefs.oneHandUI.state }
+          val chatBottomBar = remember { appPrefs.chatBottomBar.state }
+          val composeViewFocusRequester = remember { if (appPlatform.isDesktop) FocusRequester() else null }
+          AdaptingBottomPaddingLayout(Modifier, CHAT_COMPOSE_LAYOUT_ID, composeViewHeight) {
+            if (chat != null) {
+              val selectionManager = LocalSelectionManager.current
+              if (selectionManager != null) {
+                LaunchedEffect(selectionManager) {
+                  snapshotFlow { selectionManager.selectionState != SelectionState.Idle }
+                    .collect { chatsCtx.chatState.selectionActive = it }
                 }
-              ) {
-                ChatItemsList(
-                  chatsCtx, remoteHostId, chat, unreadCount, composeState, composeViewHeight, searchValue,
-                  useLinkPreviews, linkMode, scrollToItemId, selectedChatItems, showMemberInfo, showChatInfo = info, loadMessages, deleteMessage, deleteMessages, archiveReports,
-                  receiveFile, cancelFile, joinGroup, acceptCall, acceptFeature, openDirectChat, forwardItem,
-                  updateContactStats, updateMemberStats, syncContactConnection, syncMemberConnection, findModelChat, findModelMember,
-                  setReaction, showItemDetails, markItemsRead, markChatRead, closeSearch, remember { { onComposed(it) } }, developerTools, showViaProxy, contentFilter,
-                )
               }
-              if (chatInfo is ChatInfo.Group && composeState.value.message.text.isNotEmpty()) {
-                Column(
-                  Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(bottom = composeViewHeight.value)
+              Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                // disables scrolling to top of chat item on click inside the bubble
+                CompositionLocalProvider(
+                  LocalBringIntoViewSpec provides object : BringIntoViewSpec {
+                    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = 0f
+                  }
                 ) {
-                  GroupMentions(
-                    chatsCtx = chatsCtx,
-                    rhId = remoteHostId,
-                    composeState = composeState,
-                    composeViewFocusRequester = composeViewFocusRequester,
-                    chatInfo = chatInfo,
+                  ChatItemsList(
+                    chatsCtx, remoteHostId, chat, unreadCount, composeState, composeViewHeight, searchValue,
+                    useLinkPreviews, linkMode, scrollToItemId, selectedChatItems, showMemberInfo, showChatInfo = info, loadMessages, deleteMessage, deleteMessages, archiveReports,
+                    receiveFile, cancelFile, joinGroup, acceptCall, acceptFeature, openDirectChat, forwardItem,
+                    updateContactStats, updateMemberStats, syncContactConnection, syncMemberConnection, findModelChat, findModelMember,
+                    setReaction, showItemDetails, markItemsRead, markChatRead, closeSearch, remember { { onComposed(it) } }, developerTools, showViaProxy, contentFilter,
                   )
                 }
-              }
-              if (chatInfo != null && chatInfo.menuCommands.isNotEmpty()) {
-                Column(Modifier.align(Alignment.BottomStart).padding(bottom = composeViewHeight.value)) {
-                  CommandsMenuView(chatsCtx, chat, composeState, showCommandsMenu)
+                if (chatInfo is ChatInfo.Group && composeState.value.message.text.isNotEmpty()) {
+                  Column(
+                    Modifier
+                      .align(Alignment.BottomStart)
+                      .padding(bottom = composeViewHeight.value)
+                  ) {
+                    GroupMentions(
+                      chatsCtx = chatsCtx,
+                      rhId = remoteHostId,
+                      composeState = composeState,
+                      composeViewFocusRequester = composeViewFocusRequester,
+                      chatInfo = chatInfo,
+                    )
+                  }
                 }
-              }
-              // Copy button inside TopStart-aligned wrapper — above messages,
-              // behind compose (ABPL paints compose after) and toolbars (outer Box paints after ABPL)
-              if (appPlatform.isDesktop) {
-                Box(Modifier.matchParentSize()) {
-                  SelectionCopyButton()
+                if (chatInfo != null && chatInfo.menuCommands.isNotEmpty()) {
+                  Column(Modifier.align(Alignment.BottomStart).padding(bottom = composeViewHeight.value)) {
+                    CommandsMenuView(chatsCtx, chat, composeState, showCommandsMenu)
+                  }
                 }
-              }
-            }
-          }
-          if (chatsCtx.contentTag == MsgContentTag.Report) {
-            Column(
-              Modifier
-                .layoutId(CHAT_COMPOSE_LAYOUT_ID)
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .imePadding()
-            ) {
-              AnimatedVisibility(selectedChatItems.value != null) {
-                if (chatInfo != null) {
-                  SelectedItemsButtonsToolbar(
-                    chatsCtx = chatsCtx,
-                    selectedChatItems = selectedChatItems,
-                    chatInfo = chatInfo,
-                    deleteItems = { _ ->
-                      val itemIds = selectedChatItems.value
-                      val questionText = generalGetString(MR.strings.delete_messages_cannot_be_undone_warning)
-                      if (itemIds != null) {
-                        deleteMessagesAlertDialog(itemIds.sorted(), questionText = questionText, forAll = false, deleteMessages = { ids, _ ->
-                          deleteMessages(remoteHostId, chatInfo, ids, false, moderate = false) {
-                            selectedChatItems.value = null
-                          }
-                        })
-                      }
-                    },
-                    archiveItems = { archiveItems(remoteHostId, chatInfo, selectedChatItems) },
-                    moderateItems = {},
-                    forwardItems = {}
-                  )
-                }
-              }
-              if (oneHandUI.value) {
-                // That's placeholder to take some space for bottom app bar in oneHandUI
-                Box(Modifier.height(AppBarHeight * fontSizeSqrtMultiplier))
-              }
-            }
-          } else {
-            Box(
-              Modifier
-                .layoutId(CHAT_COMPOSE_LAYOUT_ID)
-                .align(Alignment.BottomCenter)
-                .imePadding()
-                .navigationBarsPadding()
-                .then(if (oneHandUI.value && chatBottomBar.value) Modifier.padding(bottom = AppBarHeight * fontSizeSqrtMultiplier) else Modifier)
-            ) {
-              composeView(composeViewFocusRequester)
-            }
-          }
-        }
-        val reportsCount = reportsCount(chatInfo?.id)
-        val supportUnreadCount = supportUnreadCount(chatInfo?.id)
-        if (oneHandUI.value && chatBottomBar.value) {
-          if (
-            chatInfo is ChatInfo.Group
-            && chatsCtx.secondaryContextFilter == null
-            && (reportsCount > 0 || supportUnreadCount > 0)
-          ) {
-            SupportChatsCountToolbar(chatInfo, reportsCount, supportUnreadCount, withStatusBar = true, showReports, showSupportChats)
-          } else {
-            StatusBarBackground()
-          }
-        } else {
-          NavigationBarBackground(true, oneHandUI.value, noAlpha = true)
-        }
-        when (chatsCtx.secondaryContextFilter) {
-          is SecondaryContextFilter.GroupChatScopeContext -> {
-            when (chatsCtx.secondaryContextFilter.groupScopeInfo) {
-              is GroupChatScopeInfo.MemberSupport -> {
-                if (oneHandUI.value) {
-                  StatusBarBackground()
-                }
-                Column(if (oneHandUI.value && chatBottomBar.value) Modifier.align(Alignment.BottomStart).imePadding() else Modifier) {
-                  Box {
-                    if (selectedChatItems.value == null) {
-                      if (chat != null) {
-                        MemberSupportChatAppBar(chatsCtx, remoteHostId, chat, chatsCtx.secondaryContextFilter.groupScopeInfo.groupMember_, scrollToItemId, { ModalManager.end.closeModal() }, onSearchValueChanged)
-                      }
-                    } else {
-                      SelectedItemsCounterToolbar(selectedChatItems, !oneHandUI.value)
-                    }
+                // Copy button inside TopStart-aligned wrapper — above messages,
+                // behind compose (ABPL paints compose after) and toolbars (outer Box paints after ABPL)
+                if (appPlatform.isDesktop) {
+                  Box(Modifier.matchParentSize()) {
+                    SelectionCopyButton()
                   }
                 }
               }
             }
-          }
-          is SecondaryContextFilter.MsgContentTagContext -> {
-            when (chatsCtx.secondaryContextFilter.contentTag) {
-              MsgContentTag.Report -> {
-                if (oneHandUI.value) {
-                  StatusBarBackground()
-                }
-                Column(if (oneHandUI.value) Modifier.align(Alignment.BottomStart).imePadding() else Modifier) {
-                  Box {
-                    if (selectedChatItems.value == null) {
-                      GroupReportsAppBar(chatsCtx, { ModalManager.end.closeModal() }, onSearchValueChanged)
-                    } else {
-                      SelectedItemsCounterToolbar(selectedChatItems, !oneHandUI.value)
-                    }
-                  }
-                }
-              }
-              else -> TODO()
-            }
-          }
-          null -> {
-            Column(if (oneHandUI.value && chatBottomBar.value) Modifier.align(Alignment.BottomStart).imePadding() else Modifier) {
-              Box {
-                if (selectedChatItems.value == null) {
-                  if (chatInfo != null) {
-                    ChatInfoToolbar(chatsCtx, chatInfo, back, info, startCall, endCall, addMembers, openGroupLink, changeNtfsState, onSearchValueChanged, showSearch, contentFilter, availableContent, searchPlaceholder)
-                  }
-                } else {
-                  SelectedItemsCounterToolbar(selectedChatItems, !oneHandUI.value || !chatBottomBar.value)
-                }
-              }
-              if (
-                chatInfo is ChatInfo.Group
-                && (reportsCount > 0 || supportUnreadCount > 0)
-                && (!oneHandUI.value || !chatBottomBar.value)
+            if (chatsCtx.contentTag == MsgContentTag.Report) {
+              Column(
+                Modifier
+                  .layoutId(CHAT_COMPOSE_LAYOUT_ID)
+                  .align(Alignment.BottomCenter)
+                  .navigationBarsPadding()
+                  .imePadding()
               ) {
-                SupportChatsCountToolbar(chatInfo, reportsCount, supportUnreadCount, withStatusBar = false, showReports, showSupportChats)
+                AnimatedVisibility(selectedChatItems.value != null) {
+                  if (chatInfo != null) {
+                    SelectedItemsButtonsToolbar(
+                      chatsCtx = chatsCtx,
+                      selectedChatItems = selectedChatItems,
+                      chatInfo = chatInfo,
+                      deleteItems = { _ ->
+                        val itemIds = selectedChatItems.value
+                        val questionText = generalGetString(MR.strings.delete_messages_cannot_be_undone_warning)
+                        if (itemIds != null) {
+                          deleteMessagesAlertDialog(itemIds.sorted(), questionText = questionText, forAll = false, deleteMessages = { ids, _ ->
+                            deleteMessages(remoteHostId, chatInfo, ids, false, moderate = false) {
+                              selectedChatItems.value = null
+                            }
+                          })
+                        }
+                      },
+                      archiveItems = { archiveItems(remoteHostId, chatInfo, selectedChatItems) },
+                      moderateItems = {},
+                      forwardItems = {}
+                    )
+                  }
+                }
+                if (oneHandUI.value) {
+                  // That's placeholder to take some space for bottom app bar in oneHandUI
+                  Box(Modifier.height(AppBarHeight * fontSizeSqrtMultiplier))
+                }
+              }
+            } else {
+              Box(
+                Modifier
+                  .layoutId(CHAT_COMPOSE_LAYOUT_ID)
+                  .align(Alignment.BottomCenter)
+                  .imePadding()
+                  .navigationBarsPadding()
+                  .then(if (oneHandUI.value && chatBottomBar.value) Modifier.padding(bottom = AppBarHeight * fontSizeSqrtMultiplier) else Modifier)
+              ) {
+                composeView(composeViewFocusRequester)
+              }
+            }
+          }
+          val reportsCount = reportsCount(chatInfo?.id)
+          val supportUnreadCount = supportUnreadCount(chatInfo?.id)
+          if (oneHandUI.value && chatBottomBar.value) {
+            if (
+              chatInfo is ChatInfo.Group
+              && chatsCtx.secondaryContextFilter == null
+              && (reportsCount > 0 || supportUnreadCount > 0)
+            ) {
+              SupportChatsCountToolbar(chatInfo, reportsCount, supportUnreadCount, withStatusBar = true, showReports, showSupportChats)
+            } else {
+              StatusBarBackground()
+            }
+          } else if (!floating) {
+            NavigationBarBackground(true, oneHandUI.value, noAlpha = true)
+          }
+          when (chatsCtx.secondaryContextFilter) {
+            is SecondaryContextFilter.GroupChatScopeContext -> {
+              when (chatsCtx.secondaryContextFilter.groupScopeInfo) {
+                is GroupChatScopeInfo.MemberSupport -> {
+                  if (oneHandUI.value) {
+                    StatusBarBackground()
+                  }
+                  Column(if (oneHandUI.value && chatBottomBar.value) Modifier.align(Alignment.BottomStart).imePadding() else Modifier) {
+                    Box {
+                      if (selectedChatItems.value == null) {
+                        if (chat != null) {
+                          MemberSupportChatAppBar(chatsCtx, remoteHostId, chat, chatsCtx.secondaryContextFilter.groupScopeInfo.groupMember_, scrollToItemId, { ModalManager.end.closeModal() }, onSearchValueChanged)
+                        }
+                      } else {
+                        SelectedItemsCounterToolbar(selectedChatItems, !oneHandUI.value)
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            is SecondaryContextFilter.MsgContentTagContext -> {
+              when (chatsCtx.secondaryContextFilter.contentTag) {
+                MsgContentTag.Report -> {
+                  if (oneHandUI.value) {
+                    StatusBarBackground()
+                  }
+                  Column(if (oneHandUI.value) Modifier.align(Alignment.BottomStart).imePadding() else Modifier) {
+                    Box {
+                      if (selectedChatItems.value == null) {
+                        GroupReportsAppBar(chatsCtx, { ModalManager.end.closeModal() }, onSearchValueChanged)
+                      } else {
+                        SelectedItemsCounterToolbar(selectedChatItems, !oneHandUI.value)
+                      }
+                    }
+                  }
+                }
+                else -> TODO()
+              }
+            }
+            null -> {
+              Column(if (oneHandUI.value && chatBottomBar.value) Modifier.align(Alignment.BottomStart).imePadding() else Modifier) {
+                Box {
+                  if (selectedChatItems.value == null) {
+                    if (chatInfo != null) {
+                      ChatInfoToolbar(chatsCtx, chatInfo, back, info, startCall, endCall, addMembers, openGroupLink, changeNtfsState, onSearchValueChanged, showSearch, contentFilter, availableContent, searchPlaceholder)
+                    }
+                  } else {
+                    SelectedItemsCounterToolbar(selectedChatItems, !oneHandUI.value || !chatBottomBar.value)
+                  }
+                }
+                if (
+                  chatInfo is ChatInfo.Group
+                  && (reportsCount > 0 || supportUnreadCount > 0)
+                  && (!oneHandUI.value || !chatBottomBar.value)
+                ) {
+                  SupportChatsCountToolbar(chatInfo, reportsCount, supportUnreadCount, withStatusBar = false, showReports, showSupportChats)
+                }
               }
             }
           }
@@ -1445,7 +1458,7 @@ fun BoxScope.ChatInfoToolbar(
       }
     }
   }
-  val oneHandUI = remember { appPrefs.oneHandUI.state }
+  val oneHandUI = if (LocalGlassConversation.current) rememberUpdatedState(false) else remember { appPrefs.oneHandUI.state }
   val chatBottomBar = remember { appPrefs.chatBottomBar.state }
   val searchTrailingContent: @Composable (() -> Unit)? = if (showContentFilterButton) {{
     IconButton({ showContentFilterMenu.value = true }) {
@@ -1458,7 +1471,28 @@ fun BoxScope.ChatInfoToolbar(
     }
   }} else null
 
-  DefaultAppBar(
+  if (LocalGlassConversation.current && !showSearch.value && contentFilter.value == null) {
+    val othersUnread = (chatModel.users.firstOrNull { it.user.activeUser }?.unreadCount ?: 0) -
+      (chatModel.getChat(chatInfo.id)?.chatStats?.unreadCount ?: 0)
+    Row(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(MaterialTheme.colors.background.copy(alpha = 0.42f),
+      Color.Transparent))).statusBarsPadding().padding(horizontal = 8.dp, vertical = 4.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+      ConversationGlass {
+        Row(Modifier.clickable(onClick = onBackClicked).heightIn(min = 44.dp).padding(horizontal = 9.dp),
+          verticalAlignment = Alignment.CenterVertically) {
+          Icon(painterResource(MR.images.ic_arrow_back_ios_new), stringResource(MR.strings.back), Modifier.size(22.dp))
+          if (othersUnread > 0) Text(unreadCountStr(othersUnread), fontSize = 13.sp)
+        }
+      }
+      ConversationGlass(Modifier.weight(1f)) {
+        Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (chatInfo is ChatInfo.Local) Modifier else Modifier.clickable(onClick = info))
+          .padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) { ChatInfoToolbarTitle(chatInfo, 30.dp) }
+      }
+      if (barButtons.isNotEmpty()) ConversationGlass {
+        Row(verticalAlignment = Alignment.CenterVertically) { barButtons.forEach { it() } }
+      }
+    }
+  } else DefaultAppBar(
     navigationButton = { if (appPlatform.isAndroid || showSearch.value) { NavigationButtonBack(onBackClicked) }  },
     title = { ChatInfoToolbarTitle(chatInfo) },
     onTitleClick = if (chatInfo is ChatInfo.Local) null else info,
@@ -1466,6 +1500,7 @@ fun BoxScope.ChatInfoToolbar(
     searchAlwaysVisible = contentFilter.value != null,
     onTop = !oneHandUI.value || !chatBottomBar.value,
     searchPlaceholder = searchPlaceholder,
+    solidBackground = LocalGlassConversation.current && LocalGlassBackdrop.current == null,
     onSearchValueChanged = onSearchValueChanged,
     searchTrailingContent = searchTrailingContent,
     buttons = { barButtons.forEach { it() } }
@@ -2915,7 +2950,7 @@ private fun TopEndFloatingButton(
 
 @Composable
 fun topPaddingToContent(chatView: Boolean, additionalTopBar: Boolean = false): Dp {
-  val oneHandUI = remember { appPrefs.oneHandUI.state }
+  val oneHandUI = if (LocalGlassConversation.current) rememberUpdatedState(false) else remember { appPrefs.oneHandUI.state }
   val chatBottomBar = remember { appPrefs.chatBottomBar.state }
   val reportsPadding = if (additionalTopBar) AppBarHeight * fontSizeSqrtMultiplier else 0.dp
   return if (oneHandUI.value && (!chatView || chatBottomBar.value)) {
@@ -2927,7 +2962,7 @@ fun topPaddingToContent(chatView: Boolean, additionalTopBar: Boolean = false): D
 
 @Composable
 private fun numberOfBottomAppBars(): Int {
-  val oneHandUI = remember { appPrefs.oneHandUI.state }
+  val oneHandUI = if (LocalGlassConversation.current) rememberUpdatedState(false) else remember { appPrefs.oneHandUI.state }
   val chatBottomBar = remember { appPrefs.chatBottomBar.state }
   return if (oneHandUI.value && chatBottomBar.value) {
     2
@@ -3016,7 +3051,9 @@ private fun FloatingDate(
     exit = fadeOut(tween(durationMillis = 350))
   ) {
     val date = lastVisibleItemDate.value
-    Column {
+    if (LocalGlassConversation.current) ConversationGlass {
+      Text(date?.let { getTimestampDateText(it) }.orEmpty(), Modifier.padding(horizontal = 12.dp, vertical = 4.dp), fontSize = 13.sp)
+    } else Column {
       Text(
         text = if (date != null) getTimestampDateText(date) else "",
         Modifier
@@ -3105,6 +3142,12 @@ private fun ButtonRow(horizontalArrangement: Arrangement.Horizontal, content: @C
 
 @Composable
 private fun DateSeparator(date: Instant) {
+  if (LocalGlassConversation.current) {
+    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+      ConversationGlass { Text(getTimestampDateText(date), Modifier.padding(horizontal = 11.dp, vertical = 3.dp), fontSize = 13.sp) }
+    }
+    return
+  }
   Text(
     text = getTimestampDateText(date),
     Modifier.padding(vertical = DEFAULT_PADDING_HALF + 4.dp, horizontal = DEFAULT_PADDING_HALF).fillMaxWidth(),
@@ -3307,6 +3350,16 @@ private fun BoxScope.BottomEndFloatingButton(
   composeViewHeight: State<Dp>,
   onClick: () -> Unit
 ) {
+  if (LocalGlassConversation.current && !animatedScrollingInProgress.value && (showButtonWithCounter.value || showButtonWithArrow.value)) {
+    ConversationGlass(Modifier.align(Alignment.BottomEnd).padding(end = 12.dp, bottom = composeViewHeight.value + 8.dp)) {
+      IconButton(onClick) {
+        if (requestedBottomScroll.value) LoadingProgressIndicator()
+        else if (showButtonWithCounter.value) Text(unreadCountStr(unreadCount.value))
+        else Icon(painterResource(MR.images.ic_keyboard_arrow_down), stringResource(MR.strings.anex_latest))
+      }
+    }
+    return
+  }
   when {
     showButtonWithCounter.value && !animatedScrollingInProgress.value -> {
       FloatingActionButton(

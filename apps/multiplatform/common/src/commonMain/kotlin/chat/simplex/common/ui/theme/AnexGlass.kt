@@ -145,3 +145,9 @@ internal fun AnexGlassSurface(
     }
   }
 }
+
+@Composable
+internal fun ConversationGlass(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
+  val backdrop = LocalGlassBackdrop.current
+  AnexGlassSurface(modifier, backdrop = backdrop, solid = backdrop == null, content = content)
+}

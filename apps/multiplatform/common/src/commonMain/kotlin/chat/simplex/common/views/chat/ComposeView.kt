@@ -1331,7 +1331,7 @@ fun ComposeView(
       enabled = attachmentEnabled
     ) {
       Icon(
-        painterResource(MR.images.ic_attach_file_filled_500),
+        painterResource(if (LocalGlassConversation.current) MR.images.ic_add else MR.images.ic_attach_file_filled_500),
         contentDescription = stringResource(MR.strings.attach),
         tint = if (attachmentEnabled) MaterialTheme.colors.primary else MaterialTheme.colors.secondary,
         modifier = Modifier
@@ -1773,8 +1773,9 @@ fun ComposeView(
       }
     }
 
-    Surface(color = MaterialTheme.colors.background, contentColor = MaterialTheme.colors.onBackground) {
-      Divider()
+    val floatingComposer = LocalGlassConversation.current
+    val composer: @Composable () -> Unit = {
+      if (!floatingComposer) Divider()
       if (chat.chatInfo is ChatInfo.Group && chat.chatInfo.groupInfo.nextConnectPrepared) {
         if (chat.chatInfo.groupInfo.businessChat == null) {
           val isChannel = chat.chatInfo.groupInfo.useRelays
@@ -1859,6 +1860,11 @@ fun ComposeView(
         }
       }
     }
+    if (floatingComposer) {
+      ConversationGlass(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp),
+        content = { composer() })
+    } else Surface(color = MaterialTheme.colors.background, contentColor = MaterialTheme.colors.onBackground) { composer() }
+
   }
 }
 
