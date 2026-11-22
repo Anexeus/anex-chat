@@ -350,11 +350,7 @@ private fun ActiveCallOverlayLayout(
 ) {
   Column {
     CallAppBar(
-      title = {
-        if (call.hasVideo) {
-          Text(call.contact.chatViewName, Modifier.offset(x = (-4).dp).padding(end = DEFAULT_PADDING), color = Color(0xFFFFFFD8), style = MaterialTheme.typography.h2, overflow = TextOverflow.Ellipsis, maxLines = 1)
-        }
-      },
+      title = {},
       onBack = { chatModel.activeCallViewIsCollapsed.value = true }
     )
     Column(Modifier.padding(horizontal = DEFAULT_PADDING)) {
@@ -434,21 +430,10 @@ private fun ControlButton(icon: Painter, iconText: StringResource, enabled: Bool
 
 @Composable
 private fun ControlButtonWrap(enabled: Boolean = true, action: () -> Unit, background: Color = controlButtonsBackground(), size: Dp, content: @Composable () -> Unit) {
-  val ripple = remember { ripple(bounded = false, radius = size / 2, color = background.lighter(0.1f)) }
-  Box(
-    Modifier
-      .background(background, CircleShape)
-      .size(size)
-      .clickable(
-        onClick = action,
-        role = Role.Button,
-        interactionSource = remember { MutableInteractionSource() },
-        indication = ripple,
-        enabled = enabled
-      ),
-    contentAlignment = Alignment.Center
-  ) {
-    content()
+  val tint = if (background == Color.Red) Color(0xFFD42B3B) else Color(0xB524282E)
+  AnexGlassSurface(Modifier.size(size), tint = tint, solid = !glassEnabled()) {
+    Box(Modifier.fillMaxSize().clickable(enabled = enabled, role = Role.Button, onClick = action),
+      contentAlignment = Alignment.Center) { content() }
   }
 }
 
@@ -474,25 +459,28 @@ private fun ToggleSoundButton(enabled: Boolean, speaker: Boolean, muted: Boolean
 fun controlButtonsBackground(): Color = if (chatModel.activeCall.value?.peerMediaSources?.hasVideo == true) Color.Black.copy(0.2f) else Color.White.copy(0.2f)
 
 @Composable
-fun AudioCallInfoView(call: Call) {
-  Column(horizontalAlignment = Alignment.CenterHorizontally) {
-    InfoText(call.contact.chatViewName, style = MaterialTheme.typography.h2)
-    InfoText(call.callState.text)
-
-    val connInfo = call.connectionInfo
-    val connInfoText = if (connInfo == null) ""  else " (${connInfo.text})"
-    InfoText(call.encryptionStatus + connInfoText)
-  }
-}
+fun AudioCallInfoView(call: Call) = CallStatusCapsule(call)
 
 @Composable
-fun VideoCallInfoView(call: Call) {
-  Column(horizontalAlignment = Alignment.Start) {
-    InfoText(call.callState.text)
+fun VideoCallInfoView(call: Call) = CallStatusCapsule(call)
 
-    val connInfo = call.connectionInfo
-    val connInfoText = if (connInfo == null) ""  else " (${connInfo.text})"
-    InfoText(call.encryptionStatus + connInfoText)
+@Composable
+private fun CallStatusCapsule(call: Call) {
+  val start = call.connectedAt
+  val elapsed by produceState(0, start) {
+    if (start != null) while (true) {
+      value = (Clock.System.now() - start).inWholeSeconds.toInt().coerceAtLeast(0)
+      delay(1000)
+    }
+  }
+  AnexGlassSurface(Modifier.padding(vertical = 8.dp), tint = Color(0xC51C2026), solid = !glassEnabled()) {
+    Column(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+      Text(call.contact.chatViewName, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        style = MaterialTheme.typography.h3)
+      InfoText(if (start == null) call.callState.text else durationText(elapsed))
+      val connection = call.connectionInfo?.let { " (" + it.text + ")" }.orEmpty()
+      InfoText(call.encryptionStatus + connection)
+    }
   }
 }
 

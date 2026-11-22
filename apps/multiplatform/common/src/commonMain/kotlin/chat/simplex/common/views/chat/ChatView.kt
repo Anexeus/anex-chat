@@ -1322,7 +1322,7 @@ fun BoxScope.ChatInfoToolbar(
       if (canStartCall) {
         barButtons.add(0) {
           IconButton({ showCallMenu.value = true }) {
-            Icon(painterResource(MR.images.ic_call_500), null, tint = controlInk)
+            Icon(painterResource(MR.images.ic_call_500), stringResource(MR.strings.icon_descr_audio_call), tint = controlInk)
           }
         }
       }
@@ -1585,16 +1585,7 @@ fun BoxScope.ChatInfoToolbar(
         contentFilterMenuItems.forEach { it() }
       }
     }
-    val callMenuWidth = remember { mutableStateOf(250.dp) }
-    val callMenuHeight = remember { mutableStateOf(0.dp) }
-    DefaultDropdownMenu(
-      showCallMenu,
-      modifier = Modifier.onSizeChanged { with(density) {
-        callMenuWidth.value = it.width.toDp().coerceAtLeast(250.dp)
-        if (oneHandUI.value && chatBottomBar.value && (appPlatform.isDesktop || (platform.androidApiLevel ?: 0) >= 30)) callMenuHeight.value = it.height.toDp()
-      } },
-      offset = DpOffset(-callMenuWidth.value, if (oneHandUI.value && chatBottomBar.value) -callMenuHeight.value else AppBarHeight)
-    ) {
+    @Composable fun CallChoices() {
       if (chatInfo is ChatInfo.Direct) {
         val callMenuItems: List<@Composable () -> Unit> = buildList {
           add {
@@ -1616,6 +1607,22 @@ fun BoxScope.ChatInfoToolbar(
           callMenuItems.forEach { it() }
         }
       }
+    }
+    if (appPlatform.isAndroid) {
+      if (showCallMenu.value) RowActionPopup({ showCallMenu.value = false }, anchorToItem = true) { CallChoices() }
+    } else {
+    val callMenuWidth = remember { mutableStateOf(250.dp) }
+    val callMenuHeight = remember { mutableStateOf(0.dp) }
+    DefaultDropdownMenu(
+      showCallMenu,
+      modifier = Modifier.onSizeChanged { with(density) {
+        callMenuWidth.value = it.width.toDp().coerceAtLeast(250.dp)
+        if (oneHandUI.value && chatBottomBar.value && (appPlatform.isDesktop || (platform.androidApiLevel ?: 0) >= 30)) callMenuHeight.value = it.height.toDp()
+      } },
+      offset = DpOffset(-callMenuWidth.value, if (oneHandUI.value && chatBottomBar.value) -callMenuHeight.value else AppBarHeight)
+    ) {
+      CallChoices()
+    }
     }
   }
 }

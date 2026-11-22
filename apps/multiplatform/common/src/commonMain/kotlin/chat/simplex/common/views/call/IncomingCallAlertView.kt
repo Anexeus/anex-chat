@@ -54,7 +54,8 @@ fun IncomingCallAlertLayout(
   acceptCall: () -> Unit
 ) {
   val color = if (isInDarkTheme()) MaterialTheme.colors.surface else IncomingCallLight
-  Column(Modifier.fillMaxWidth().background(color).statusBarsPadding().padding(top = DEFAULT_PADDING, bottom = DEFAULT_PADDING, start = DEFAULT_PADDING, end = 8.dp)) {
+  @Composable fun Controls() {
+  Column(Modifier.fillMaxWidth().padding(top = DEFAULT_PADDING, bottom = DEFAULT_PADDING, start = DEFAULT_PADDING, end = 8.dp)) {
     IncomingCallInfo(invitation, chatModel)
     Spacer(Modifier.height(8.dp))
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
@@ -68,6 +69,11 @@ fun IncomingCallAlertLayout(
       }
     }
   }
+  }
+  if (appPlatform.isAndroid) {
+    AnexGlassSurface(Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp),
+      shape = AnexGlass.panel, tint = MaterialTheme.colors.surface.copy(alpha = 0.94f), solid = !glassEnabled()) { Controls() }
+  } else Box(Modifier.background(color).statusBarsPadding()) { Controls() }
 }
 
 @Composable
