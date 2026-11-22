@@ -22,7 +22,9 @@
 
 The signed ARM64 FOSS APK installed on device 3a6cab29 without the Android test-install option and opened from its launcher. Android package tools confirmed the Anex Chat label, launcher and notification artwork, release signature, and absence of the test-only flag. Both core libraries matched the official v7.1.4 ARM64 release. The final folder contains one APK, install instructions and license credits.
 
-On the clean installation, welcome displayed the Restore from backup action, which opened Android’s file picker. A new test profile reached Network commitments. Acceptance requires the owner. Post-acceptance server switches, message and photo delivery, scanner preview, call screens, glass appearance, and a full backup/restore round trip have not been verified on this release. No exception to Android’s battery restrictions was granted.
+On the clean installation, welcome restore opened Android’s file picker. The test profile completed onboarding. In Settings → Network & servers → Anex, the message server and file server both had Use for new connections enabled. The scanner opened the camera. Calls → + opened the contact picker. Chat data showed both archive actions, and Back up chats reached passphrase setup. The Anex title and upstream credit appeared in About. All four navigation tabs were present. Screen capture was black over the app, so the visual glass finish and on-screen logo were not independently confirmed. No screen-protection setting was changed.
+
+A test message and the logo photo appeared in Private notes. This checks the composer and attachment picker locally. The clean profile had no connected contacts. Outbound network delivery, a live call and real QR decoding still need a peer. On two test phones, tap Chats → +, show My code on one and use Scan or paste a code on the other. Once connected, open the direct chat, send text, tap + → Image → choose a photo → Send, and check both arrive on the other phone. Tap the call button and answer on the other phone. A full archive restore was not run. To test it safely, use a spare installation and avoid running both copies of the restored profile at once.
 
 ## What to do next
 
