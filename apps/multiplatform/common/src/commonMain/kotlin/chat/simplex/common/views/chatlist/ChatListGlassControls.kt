@@ -67,21 +67,23 @@ internal fun ChatListTabBar(
       val segment = maxWidth / 3
       val presses = remember { List(3) { MutableInteractionSource() } }
       val pressed = presses.map { it.collectIsPressedAsState().value }.indexOf(true)
+      val hovered = presses.map { it.collectIsHoveredAsState().value }.indexOf(true)
+      val active = if (pressed >= 0) pressed else hovered
       var drag by remember { mutableStateOf<Float?>(null) }
       val segmentPx = with(LocalDensity.current) { segment.toPx().coerceAtLeast(1f) }
-      val target = drag ?: (if (pressed >= 0 && backdrop != null) pressed else selected).toFloat()
+      val target = drag ?: (if (active >= 0 && backdrop != null) active else selected).toFloat()
       val springPosition by animateFloatAsState(target, spring(dampingRatio = 0.80f, stiffness = 580f))
       val position = drag ?: springPosition
-      val held = backdrop != null && (drag != null || pressed >= 0)
+      val held = backdrop != null && (drag != null || active >= 0)
       val lift by animateFloatAsState(if (held) 1f else 0f, spring(stiffness = 640f))
       val glyphs = if (backdrop != null && (platform.androidApiLevel ?: 0) >= 31)
         rememberGlassPlane() else null
-      val bendGlyphs = glyphs != null && (held || kotlin.math.abs(position - selected) > 0.012f)
+      val bendGlyphs = glyphs != null && held
       val drawLens: @Composable () -> Unit = {
         Box(Modifier.matchParentSize()) {
           val frame = Modifier.offset { IntOffset((position * segmentPx).roundToInt(), 0) }.width(segment).fillMaxHeight()
-            .graphicsLayer { scaleX = 1f + 0.045f * lift; scaleY = 1f + 0.065f * lift }
-          if (backdrop == null) {
+            .graphicsLayer { scaleX = 1f + 0.055f * lift; scaleY = 1f + 0.11f * lift }
+          if (!held) {
             Spacer(frame.background(if (light) Color.White else Color(0xFF49494E), CircleShape))
           } else {
             val tint = if (light) Color.White.copy(alpha = 0.57f) else Color(0xFF8792A3).copy(alpha = 0.16f + 0.08f * lift)
@@ -113,8 +115,12 @@ internal fun ChatListTabBar(
         @Composable
         fun RowScope.Tab(index: Int, icon: ImageResource, label: String, click: () -> Unit) {
           Column(
-            Modifier.weight(1f).clip(CircleShape).selectable(selected == index, interactionSource = presses[index], indication = null, role = Role.Tab, onClick = click)
-              .heightIn(min = 49.dp).padding(horizontal = 2.dp, vertical = 4.dp),
+            Modifier.weight(1f).hoverable(presses[index]).clip(CircleShape).selectable(selected == index, interactionSource = presses[index], indication = null, role = Role.Tab, onClick = click)
+              .graphicsLayer {
+                val proximity = (1f - kotlin.math.abs(position - index)).coerceIn(0f, 1f)
+                scaleX = 1f + 0.13f * lift * proximity
+                scaleY = scaleX
+              }.heightIn(min = 49.dp).padding(horizontal = 2.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally
           ) {
             Box {
