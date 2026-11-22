@@ -213,6 +213,12 @@ private fun ChatsHeader(glass: Boolean, stopped: Boolean, running: Boolean, open
         }
         ItemAction(stringResource(MR.strings.new_1_time_link), painterResource(MR.images.ic_add_link)) { openConnection(NewChatOption.INVITE) }
         ItemAction(stringResource(MR.strings.scan_paste_link), painterResource(MR.images.ic_qr_code_scanner)) { openConnection(NewChatOption.CONNECT) }
+        ItemAction(stringResource(MR.strings.create_group_button), painterResource(MR.images.ic_group)) {
+          newChat.value = false
+          ModalManager.start.showCustomModal { close ->
+            AddGroupView(chatModel, chatModel.currentRemoteHost.value, close) { ModalManager.start.closeModals() }
+          }
+        }
         ItemAction(stringResource(MR.strings.your_public_address), painterResource(MR.images.ic_qr_code)) {
           newChat.value = false
           ModalManager.start.showModalCloseable { close -> UserAddressView(chatModel, close = close) }

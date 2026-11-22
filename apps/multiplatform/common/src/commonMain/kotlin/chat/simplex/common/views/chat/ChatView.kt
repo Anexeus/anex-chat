@@ -426,7 +426,8 @@ fun ChatView(
                 val selectedItems: MutableState<Set<Long>?> = mutableStateOf(null)
                 ModalManager.end.showCustomModal { close ->
                   val appBar = remember { mutableStateOf(null as @Composable (BoxScope.() -> Unit)?) }
-                  ModalView(close, cardScreen = true, appBar = appBar.value) {
+                  val groupNavigation = appPlatform.isAndroid && activeChat.value?.chatInfo is ChatInfo.Group
+                  ModalView(close, cardScreen = !groupNavigation, glassNavigation = groupNavigation, appBar = appBar.value) {
                     val chatInfo = remember { activeChat }.value?.chatInfo
                     if (chatInfo is ChatInfo.Direct) {
                       var contactInfo: Pair<ConnectionStats?, Profile?>? by remember(chatInfo.id) { mutableStateOf(if (chatInfo.id == preloadedChatId) preloadedContactInfo else null) }
@@ -3333,7 +3334,7 @@ fun addGroupMembers(groupInfo: GroupInfo, rhId: Long?, view: Any? = null, close:
   withBGApi {
     setGroupMembers(rhId, groupInfo, chatModel)
     close?.invoke()
-    ModalManager.end.showModalCloseable(showClose = true) { close ->
+    ModalManager.end.showModalCloseable(showClose = true, glassNavigation = true) { close ->
       AddGroupMembersView(rhId, groupInfo, false, chatModel, close)
     }
   }

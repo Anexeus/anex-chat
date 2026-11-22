@@ -56,7 +56,7 @@ fun AddGroupView(chatModel: ChatModel, rh: RemoteHostInfo?, close: () -> Unit, c
           closeAll.invoke()
 
           if (!groupInfo.incognito) {
-            ModalManager.end.showModalCloseable(showClose = true) { close ->
+            ModalManager.end.showModalCloseable(showClose = true, glassNavigation = true) { close ->
               AddGroupMembersView(rhId, groupInfo, creatingGroup = true, chatModel, close)
             }
           } else {
@@ -104,7 +104,7 @@ fun AddGroupLayout(
       sheetState = bottomSheetModalState,
       sheetShape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp)
     ) {
-      ModalView(close = close) {
+      ModalView(close = close, glassNavigation = true) {
         ColumnWithScrollBar {
           AppBarTitle(stringResource(MR.strings.create_secret_group_title), hostDevice(rhId), bottomPadding = DEFAULT_PADDING_HALF)
           Row(
@@ -122,7 +122,11 @@ fun AddGroupLayout(
               Box(contentAlignment = Alignment.TopEnd) {
                 Box(contentAlignment = Alignment.Center) {
                   ProfileImage(128.dp, image = profileImage.value, icon = MR.images.ic_supervised_user_circle_filled)
-                  EditImageButton { scope.launch { bottomSheetModalState.show() } }
+                  if (appPlatform.isAndroid) {
+                    AnexGlassSurface(Modifier.align(Alignment.BottomEnd), solid = !glassEnabled()) {
+                      EditImageButton { scope.launch { bottomSheetModalState.show() } }
+                    }
+                  } else EditImageButton { scope.launch { bottomSheetModalState.show() } }
                 }
                 if (profileImage.value != null) {
                   DeleteImageButton { profileImage.value = null }

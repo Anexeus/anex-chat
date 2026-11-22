@@ -119,7 +119,7 @@ fun ModalData.GroupChatInfoView(
           setGroupMembers(rhId, groupInfo, chatModel)
           if (!isActive) return@launch
 
-          ModalManager.end.showModalCloseable(showClose = true) { close ->
+          ModalManager.end.showModalCloseable(showClose = true, glassNavigation = true) { close ->
             AddGroupMembersView(rhId, groupInfo, false, chatModel, close)
           }
         }
@@ -782,7 +782,7 @@ fun ModalData.GroupChatInfoLayout(
       itemsIndexed(filteredMembers.value, key = { _, m -> m.groupMemberId }) { index, member ->
         val isLast = index == filteredMembers.value.lastIndex
         val shape = if (isLast) RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp) else RectangleShape
-        Column(Modifier.padding(horizontal = CARD_PADDING).fillMaxWidth().clip(shape).background(sectionCardColor())) {
+        Column(if (appPlatform.isAndroid) Modifier.fillMaxWidth() else Modifier.padding(horizontal = CARD_PADDING).fillMaxWidth().clip(shape).background(sectionCardColor())) {
           Divider()
           val showMenu = remember { mutableStateOf(false) }
           val canBeSelected = groupInfo.membership.memberRole >= member.memberRole && member.memberRole < GroupMemberRole.Moderator
