@@ -1020,7 +1020,7 @@ fun ChatLayout(
     ) {
       val composeViewHeight = remember { mutableStateOf(0.dp) }
       val floating = appPlatform.isAndroid && chatsCtx.secondaryContextFilter == null
-      val backdrop = if (floating && glassEnabled()) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31) else null
+      val backdrop = if (floating && glassEnabled()) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31, conversation = true) else null
       val wallpaper = Modifier.chatViewBackgroundModifier(MaterialTheme.colors, MaterialTheme.wallpaper, LocalAppBarHandler.current?.backgroundGraphicsLayerSize, LocalAppBarHandler.current?.backgroundGraphicsLayer, drawWallpaper = chatsCtx.secondaryContextFilter == null, drawWallpaperImage = !LocalTerminalLayout.current)
       Box(Modifier.fillMaxSize().then(if (floating) Modifier else wallpaper)) {
         if (floating) Spacer((backdrop?.capture(Modifier.matchParentSize()) ?: Modifier.matchParentSize()).then(wallpaper))
@@ -1267,6 +1267,7 @@ fun BoxScope.ChatInfoToolbar(
     chatInfo.contact.active &&
     activeCall == null
 
+  val controlInk = if (LocalGlassConversation.current) MaterialTheme.colors.onBackground else MaterialTheme.colors.primary
   // Chat-type specific buttons
   when (chatInfo) {
     is ChatInfo.Local -> {
@@ -1280,7 +1281,7 @@ fun BoxScope.ChatInfoToolbar(
           Icon(
             painterResource(MR.images.ic_search),
             stringResource(MR.strings.search_verb).capitalize(Locale.current),
-            tint = if (chatInfo.noteFolder.ready) MaterialTheme.colors.primary else MaterialTheme.colors.secondary
+            tint = if (chatInfo.noteFolder.ready) controlInk else MaterialTheme.colors.secondary
           )
         }
       }
@@ -1321,7 +1322,7 @@ fun BoxScope.ChatInfoToolbar(
       if (canStartCall) {
         barButtons.add(0) {
           IconButton({ showCallMenu.value = true }) {
-            Icon(painterResource(MR.images.ic_call_500), null, tint = MaterialTheme.colors.primary)
+            Icon(painterResource(MR.images.ic_call_500), null, tint = controlInk)
           }
         }
       }
@@ -1379,7 +1380,7 @@ fun BoxScope.ChatInfoToolbar(
         Icon(
           painterResource(MR.images.ic_photo_library),
           null,
-          tint = MaterialTheme.colors.primary
+          tint = controlInk
         )
       }
     }
@@ -1454,7 +1455,7 @@ fun BoxScope.ChatInfoToolbar(
   if (menuItems.isNotEmpty()) {
     barButtons.add {
       IconButton({ showMenu.value = true }) {
-        Icon(MoreVertFilled, stringResource(MR.strings.icon_descr_more_button), tint = MaterialTheme.colors.primary)
+        Icon(MoreVertFilled, stringResource(MR.strings.icon_descr_more_button), tint = controlInk)
       }
     }
   }
@@ -1484,10 +1485,11 @@ fun BoxScope.ChatInfoToolbar(
           if (othersUnread > 0) Text(unreadCountStr(othersUnread), fontSize = 13.sp)
         }
       }
-      ConversationGlass(Modifier.weight(1f)) {
-        Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (chatInfo is ChatInfo.Local) Modifier else Modifier.clickable(onClick = info))
+      ConversationGlass(Modifier.weight(1f, fill = false)) {
+        Box(Modifier.heightIn(min = 44.dp).then(if (chatInfo is ChatInfo.Local) Modifier else Modifier.clickable(onClick = info))
           .padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) { ChatInfoToolbarTitle(chatInfo, 30.dp) }
       }
+      Spacer(Modifier.weight(0.12f))
       if (barButtons.isNotEmpty()) ConversationGlass {
         Row(verticalAlignment = Alignment.CenterVertically) { barButtons.forEach { it() } }
       }
@@ -2455,7 +2457,7 @@ fun BoxScope.ChatItemsList(
   val modifier = if (appPlatform.isDesktop && manager != null) SelectionHandler(manager, listState, mergedItems, revealedItems, linkMode) else Modifier
 
   LazyColumnWithScrollBar(
-    modifier.align(Alignment.BottomCenter),
+    (LocalGlassBackdrop.current?.captureMessages(modifier) ?: modifier).align(Alignment.BottomCenter),
     state = listState.value,
     contentPadding = PaddingValues(
       top = topPaddingToContent,
@@ -3144,7 +3146,7 @@ private fun ButtonRow(horizontalArrangement: Arrangement.Horizontal, content: @C
 private fun DateSeparator(date: Instant) {
   if (LocalGlassConversation.current) {
     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-      ConversationGlass { Text(getTimestampDateText(date), Modifier.padding(horizontal = 11.dp, vertical = 3.dp), fontSize = 13.sp) }
+      AnexGlassSurface(backdrop = LocalGlassBackdrop.current, solid = LocalGlassBackdrop.current == null, includeMessages = false) { Text(getTimestampDateText(date), Modifier.padding(horizontal = 11.dp, vertical = 3.dp), fontSize = 13.sp) }
     }
     return
   }
