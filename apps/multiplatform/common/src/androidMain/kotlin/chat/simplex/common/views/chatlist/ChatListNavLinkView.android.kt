@@ -58,7 +58,7 @@ actual fun ChatListNavLinkLayout(
       chatLinkPreview()
     }
     if (dropdownMenuItems != null) {
-      if (inbox && showMenu.value) RowActionPopup({ showMenu.value = false }, dropdownMenuItems)
+      if (inbox && showMenu.value) RowActionPopup({ showMenu.value = false }, actions = dropdownMenuItems)
       else if (!inbox) DefaultDropdownMenu(showMenu, dropdownMenuItems = dropdownMenuItems)
     }
   }
@@ -67,39 +67,5 @@ actual fun ChatListNavLinkLayout(
       color = MaterialTheme.colors.onBackground.copy(alpha = 0.14f), thickness = 0.5.dp)
   } else {
     Divider(Modifier.padding(horizontal = 8.dp))
-  }
-}
-
-@Composable
-private fun RowActionPopup(dismiss: () -> Unit, actions: @Composable () -> Unit) {
-  val visible = LocalChatMenuVisible.current
-  val backdrop = LocalGlassBackdrop.current
-  val haptic = LocalHapticFeedback.current
-  DisposableEffect(Unit) {
-    visible?.value = true
-    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-    onDispose { visible?.value = false }
-  }
-  val margin = with(LocalDensity.current) { 12.dp.roundToPx() }
-  val anchor = remember(margin) { object : PopupPositionProvider {
-    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
-      val x = if (layoutDirection == LayoutDirection.Ltr) margin else windowSize.width - popupContentSize.width - margin
-      val below = anchorBounds.bottom + margin
-      val y = if (below + popupContentSize.height <= windowSize.height - margin) below else anchorBounds.top - popupContentSize.height - margin
-      return IntOffset(x, y.coerceIn(margin, (windowSize.height - popupContentSize.height - margin).coerceAtLeast(margin)))
-    }
-  } }
-  Popup(anchor, onDismissRequest = dismiss, properties = PopupProperties(focusable = true)) {
-    val scale = remember { Animatable(0.89f) }
-    LaunchedEffect(Unit) { scale.animateTo(1f, spring(dampingRatio = 0.78f)) }
-    BoxWithConstraints {
-      AnexGlassSurface(Modifier.padding(6.dp).width(255.dp).heightIn(max = (maxHeight - 32.dp).coerceAtLeast(1.dp))
-        .graphicsLayer { scaleX = scale.value; scaleY = scale.value }, shape = RoundedCornerShape(24.dp),
-        backdrop = backdrop, solid = backdrop == null) {
-        Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = 6.dp)) {
-          CompositionLocalProvider(LocalGlassMenu provides true) { actions() }
-        }
-      }
-    }
   }
 }
