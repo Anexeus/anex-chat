@@ -53,10 +53,14 @@ fun DefaultAppBar(
     }
   }
   val keyboardInset = WindowInsets.ime
-  Box(modifier) {
+  val settingsGlass = LocalSettingsGlass.current
+  val barInsets = if (onTop) Modifier.statusBarsPadding() else Modifier.navigationBarsPadding()
+  Box(modifier.then(if (settingsGlass) barInsets.padding(horizontal = 10.dp, vertical = 2.dp) else Modifier)) {
     val density = LocalDensity.current
     val blurRadius = remember { appPrefs.appearanceBarsBlurRadius.state }
-    Box(Modifier
+    if (settingsGlass) {
+      AnexGlassSurface(Modifier.matchParentSize(), backdrop = LocalGlassBackdrop.current, solid = !glassEnabled()) {}
+    } else Box(Modifier
       .matchParentSize()
       .then(if (solidBackground) Modifier else Modifier.blurredBackgroundModifier(
         keyboardInset, handler, blurRadius, prefAlpha, handler?.keyboardCoversBar == true, onTop, density
@@ -77,7 +81,7 @@ fun DefaultAppBar(
     Box(
       Modifier
         .fillMaxWidth()
-        .then(if (!onTop) Modifier.navigationBarsPadding() else Modifier)
+        .then(if (!settingsGlass && !onTop) Modifier.navigationBarsPadding() else Modifier)
         .heightIn(min = AppBarHeight * fontSizeSqrtMultiplier)
     ) {
       AppBar(
@@ -103,12 +107,16 @@ fun DefaultAppBar(
             }
           }
         },
-        navigationIcon = navigationButton,
+        navigationIcon = if (settingsGlass && navigationButton != null) ({
+          Row(Modifier.clip(androidx.compose.foundation.shape.CircleShape)
+            .background(MaterialTheme.colors.onSurface.copy(alpha = 0.07f))) { navigationButton() }
+        }) else navigationButton,
+        addStatusInset = !settingsGlass,
         buttons = if (!showSearch) buttons else {{}},
         centered = !showSearch && (title != null || !onTop),
         onTop = onTop,
       )
-      AppBarDivider(onTop, title != null || fixedTitleText != null, connection)
+      if (!settingsGlass) AppBarDivider(onTop, title != null || fixedTitleText != null, connection)
     }
   }
 }
@@ -188,9 +196,10 @@ private fun AppBar(
   buttons: @Composable RowScope.() -> Unit = {},
   centered: Boolean,
   onTop: Boolean,
+  addStatusInset: Boolean = true,
 ) {
   val adjustedModifier = modifier
-    .then(if (onTop) Modifier.statusBarsPadding() else Modifier)
+    .then(if (onTop && addStatusInset) Modifier.statusBarsPadding() else Modifier)
     .height(AppBarHeight * fontSizeSqrtMultiplier)
     .fillMaxWidth()
     .padding(horizontal = AppBarHorizontalPadding)

@@ -85,7 +85,7 @@ fun ModalData.NetworkAndServersView(closeNetworkAndServers: () -> Unit) {
       onClose(close = { ModalManager.start.closeModals() })
     }
   }
-  ModalView(close = { onClose(closeNetworkAndServers) }, cardScreen = true) {
+  ModalView(close = { onClose(closeNetworkAndServers) }, cardScreen = true, settingsGlass = true) {
     NetworkAndServersLayout(
       currentRemoteHost = currentRemoteHost,
       networkUseSocksProxy = networkUseSocksProxy,

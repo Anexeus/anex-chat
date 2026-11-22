@@ -51,6 +51,9 @@ fun SettingsView(chatModel: ChatModel, setPerformLA: (Boolean) -> Unit, close: (
     setPerformLA = setPerformLA,
     showModal = { modalView -> { ModalManager.start.showModal { modalView(chatModel) } } },
     showSettingsModal = showSettingsModal,
+    showGlassSettingsModal = { modalView -> {
+      ModalManager.start.showModal(settings = true, cardScreen = true, settingsGlass = true) { modalView(chatModel) }
+    } },
     showSettingsModalWithSearch = { modalView ->
       ModalManager.start.showCustomModal { close ->
         val search = rememberSaveable { mutableStateOf("") }
@@ -93,6 +96,7 @@ fun SettingsLayout(
   showVersion: () -> Unit,
   withAuth: (title: String, desc: String, block: () -> Unit) -> Unit,
   versionInfo: Pair<String, Int?> = appVersionInfo,
+  showGlassSettingsModal: (@Composable (ChatModel) -> Unit) -> (() -> Unit) = showSettingsModal,
 ) {
   val view = LocalMultiplatformView()
   LaunchedEffect(Unit) {
@@ -105,8 +109,8 @@ fun SettingsLayout(
     SectionView {
       SettingsActionItem(painterResource(MR.images.ic_light_mode), stringResource(MR.strings.appearance_settings), showSettingsModal { AppearanceView(it) })
       SettingsActionItem(painterResource(MR.images.ic_lock), stringResource(MR.strings.your_privacy), showSettingsModal { PrivacySettingsView(it, showSettingsModal, setPerformLA) }, disabled = stopped)
-      SettingsActionItem(painterResource(MR.images.ic_help), stringResource(MR.strings.help_and_support), showSettingsModal { HelpAndSupportView(it, showModal, showCustomModal) })
-      DatabaseItem(encrypted, passphraseSaved, showSettingsModal { DatabaseView() }, stopped)
+      SettingsActionItem(painterResource(MR.images.ic_help), stringResource(MR.strings.help_and_support), showGlassSettingsModal { HelpAndSupportView(it, showModal, showCustomModal, showGlassSettingsModal) })
+      DatabaseItem(encrypted, passphraseSaved, showGlassSettingsModal { DatabaseView() }, stopped)
       SettingsActionItem(painterResource(MR.images.ic_ios_share), stringResource(MR.strings.migrate_from_device_to_another_device), { withAuth(generalGetString(MR.strings.auth_open_migration_to_another_device), generalGetString(MR.strings.auth_log_in_using_credential)) { ModalManager.fullscreen.showCustomModal { close -> MigrateFromDeviceView(close) } } }, disabled = stopped)
     }
     SectionDividerSpaced()
@@ -136,7 +140,7 @@ fun SettingsLayout(
       if (appPlatform == AppPlatform.ANDROID) {
         SettingsActionItem(painterResource(if (notificationsMode.value == NotificationsMode.OFF) MR.images.ic_bolt_off else MR.images.ic_bolt), stringResource(MR.strings.notifications), showSettingsModal { NotificationsSettingsView(it) }, disabled = stopped)
       }
-      SettingsActionItem(painterResource(MR.images.ic_videocam), stringResource(MR.strings.settings_audio_video_calls), showSettingsModal { CallSettingsView(it, showModal) }, disabled = stopped)
+      SettingsActionItem(painterResource(MR.images.ic_videocam), stringResource(MR.strings.settings_audio_video_calls), showGlassSettingsModal { CallSettingsView(it, showModal) }, disabled = stopped)
       AppShutdownItem()
       AppVersionItem(showVersion, versionInfo)
     }
@@ -160,6 +164,7 @@ fun HelpAndSupportView(
   chatModel: ChatModel,
   showModal: (@Composable (ChatModel) -> Unit) -> (() -> Unit),
   showCustomModal: (@Composable ModalData.(ChatModel, () -> Unit) -> Unit) -> (() -> Unit),
+  showAbout: (@Composable (ChatModel) -> Unit) -> (() -> Unit) = showModal,
 ) {
   val uriHandler = LocalUriHandler.current
   val stopped = chatModel.chatRunning.value == false
@@ -172,7 +177,7 @@ fun HelpAndSupportView(
       if (!appPlatform.isAndroid) {
         SettingsActionItem(painterResource(MR.images.ic_add), stringResource(MR.strings.whats_new), showCustomModal { _, close -> WhatsNewView(viaSettings = true, close = close) }, disabled = stopped)
       }
-      SettingsActionItem(painterResource(MR.images.ic_info), stringResource(MR.strings.about_simplex_chat), showModal { SimpleXInfo(it, onboarding = false) })
+      SettingsActionItem(painterResource(MR.images.ic_info), stringResource(MR.strings.about_simplex_chat), showAbout { SimpleXInfo(it, onboarding = false) })
     }
     SectionDividerSpaced()
 

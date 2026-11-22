@@ -54,6 +54,7 @@ internal fun glassEnabled() = when (appPrefs.anexGlassMode.state.value) {
   GlassMode.Off -> false
 }
 
+internal val LocalSettingsGlass = staticCompositionLocalOf { false }
 internal val LocalGlassBackdrop = staticCompositionLocalOf<GlassBackdrop?> { null }
 internal val LocalGlassConversation = staticCompositionLocalOf { false }
 internal val LocalGlassMenu = staticCompositionLocalOf { false }

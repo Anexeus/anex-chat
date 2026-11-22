@@ -43,6 +43,8 @@ private fun CardColumnLayout(
   cardShape: Shape = SectionCardShape,
   content: @Composable () -> Unit
 ) {
+  val panel = sectionCardColor()
+  val tint = if (LocalSettingsGlass.current && glassEnabled()) panel.copy(alpha = 0.85f) else panel
   val dividerColor = canvasColorForCurrentTheme()
   val dividerPx = with(LocalDensity.current) { 2.dp.toPx() }
   val childBottoms = remember { mutableListOf<Float>() }
@@ -52,7 +54,7 @@ private fun CardColumnLayout(
       .padding(horizontal = CARD_PADDING)
       .fillMaxWidth()
       .clip(cardShape)
-      .background(sectionCardColor())
+      .background(tint)
       .padding(contentPadding)
       .drawBehind {
         for (i in 0 until childBottoms.size - 1) {

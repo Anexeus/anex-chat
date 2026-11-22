@@ -36,6 +36,7 @@ fun ModalView(
   onSearchValueChanged: (String) -> Unit = {},
   endButtons: @Composable RowScope.() -> Unit = {},
   glassNavigation: Boolean = false,
+  settingsGlass: Boolean = false,
   appBar: @Composable (BoxScope.() -> Unit)? = null,
   content: @Composable BoxScope.() -> Unit,
 ) {
@@ -45,9 +46,11 @@ fun ModalView(
   val oneHandUI = remember { derivedStateOf { if (appPrefs.onboardingStage.state.value == OnboardingStage.OnboardingComplete) appPrefs.oneHandUI.state.value else false } }
   Surface(Modifier.fillMaxSize(), contentColor = LocalContentColor.current) {
     val bgOverride = if (cardScreen) canvasColorForCurrentTheme() else if (background != Color.Unspecified) background else null
-    CompositionLocalProvider(LocalCardScreen provides cardScreen) {
+    val styled = settingsGlass && appPlatform.isAndroid
+    val backdrop = if (styled && glassEnabled()) rememberGlassBackdrop((platform.androidApiLevel ?: 0) >= 31) else null
+    CompositionLocalProvider(LocalCardScreen provides cardScreen, LocalSettingsGlass provides styled) {
     Box(Modifier.themedBackground(bgLayerSize = LocalAppBarHandler.current?.backgroundGraphicsLayerSize, bgLayer = LocalAppBarHandler.current?.backgroundGraphicsLayer, overrideColor = bgOverride)) {
-      Box(modifier = modifier) {
+      Box(modifier = backdrop?.capture(modifier) ?: modifier) {
         content()
       }
       if (showAppBar) {
@@ -67,6 +70,7 @@ fun ModalView(
               Row(content = endButtons)
             }
           } else {
+            CompositionLocalProvider(LocalGlassBackdrop provides backdrop) {
             DefaultAppBar(
               navigationButton = if (showClose) {
                 { NavigationButtonBack(onButtonClicked = if (enableClose) close else null) }
@@ -77,6 +81,7 @@ fun ModalView(
               onSearchValueChanged = onSearchValueChanged,
               buttons = endButtons
             )
+            }
           }
         }
       }
@@ -138,9 +143,9 @@ class ModalManager(private val placement: ModalPlacement? = null) {
 
   fun isLastModal(data: ModalData): Boolean = modalViews.getOrNull(modalViews.size - toRemove.size - 1)?.data === data
 
-  fun showModal(settings: Boolean = false, showClose: Boolean = true, id: ModalViewId? = null, forceAnimated: Boolean = false, cardScreen: Boolean = false, endButtons: @Composable RowScope.() -> Unit = {}, content: @Composable ModalData.() -> Unit) {
+  fun showModal(settings: Boolean = false, showClose: Boolean = true, id: ModalViewId? = null, forceAnimated: Boolean = false, cardScreen: Boolean = false, endButtons: @Composable RowScope.() -> Unit = {}, settingsGlass: Boolean = false, content: @Composable ModalData.() -> Unit) {
     showCustomModal(id = id, forceAnimated = forceAnimated) { close ->
-      ModalView(close, showClose = showClose, cardScreen = cardScreen, endButtons = endButtons, content = { content() })
+      ModalView(close, settingsGlass = settingsGlass, showClose = showClose, cardScreen = cardScreen, endButtons = endButtons, content = { content() })
     }
   }
 
