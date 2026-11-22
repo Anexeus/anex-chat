@@ -1485,11 +1485,12 @@ fun BoxScope.ChatInfoToolbar(
           if (othersUnread > 0) Text(unreadCountStr(othersUnread), fontSize = 13.sp)
         }
       }
-      ConversationGlass(Modifier.weight(1f, fill = false)) {
-        Box(Modifier.heightIn(min = 44.dp).then(if (chatInfo is ChatInfo.Local) Modifier else Modifier.clickable(onClick = info))
-          .padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) { ChatInfoToolbarTitle(chatInfo, 30.dp) }
+      Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+        ConversationGlass {
+          Box(Modifier.heightIn(min = 44.dp).then(if (chatInfo is ChatInfo.Local) Modifier else Modifier.clickable(onClick = info))
+            .padding(horizontal = 8.dp), contentAlignment = Alignment.CenterStart) { ChatInfoToolbarTitle(chatInfo, 30.dp) }
+        }
       }
-      Spacer(Modifier.weight(0.12f))
       if (barButtons.isNotEmpty()) ConversationGlass {
         Row(verticalAlignment = Alignment.CenterVertically) { barButtons.forEach { it() } }
       }
