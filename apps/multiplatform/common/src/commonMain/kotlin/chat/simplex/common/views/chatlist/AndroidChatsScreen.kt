@@ -80,9 +80,11 @@ internal fun AndroidChatsScreen(
     ModalManager.start.showModalCloseable(cardScreen = true) { close -> SettingsView(chatModel, setPerformLA, close) }
     Unit
   }
+  var calls by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
   fun select(next: ActiveFilter?) {
     search.value = TextFieldValue()
     if (picker.value.isVisible()) picker.value = AnimatedViewState.HIDING
+    calls = false
     filter.value = next
     scope.launch { if (list.layoutInfo.totalItemsCount > 0) list.scrollToItem(0) }
   }
@@ -97,6 +99,7 @@ internal fun AndroidChatsScreen(
       .then(if (menuVisible.value && glassEnabled && (platform.androidApiLevel ?: 0) >= 31) Modifier.blur(5.dp) else Modifier)) {
       Box(backdrop?.capture(Modifier.fillMaxSize()) ?: Modifier.fillMaxSize()) {
         when {
+          calls -> CallsHistory(Modifier.fillMaxSize(), barHeight + bottomInset + 18.dp)
           running == null -> Text(stringResource(MR.strings.loading_chats), Modifier.align(Alignment.Center), color = theme.secondary)
           chats.isEmpty() -> Box(Modifier.align(Alignment.Center).padding(horizontal = 16.dp)) { NoChatsView(search) }
           else -> LazyColumn(Modifier.fillMaxSize(), state = list,
@@ -110,7 +113,7 @@ internal fun AndroidChatsScreen(
           }
         }
       }
-      Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
+      if (!calls) Column(Modifier.fillMaxWidth().onSizeChanged { headerHeight = with(density) { it.height.toDp() } }
         .background(Brush.verticalGradient(listOf(theme.background, theme.background.copy(alpha = 0.94f),
           theme.background.copy(alpha = 0.80f), theme.background.copy(alpha = 0.22f))))) {
         if (keyboard != KeyboardState.Opened) {
@@ -130,16 +133,17 @@ internal fun AndroidChatsScreen(
       }
       // Fade the scrolling content before it passes under the floating controls.
       if (keyboard != KeyboardState.Opened) {
-        androidx.compose.animation.AnimatedVisibility(barVisible || pickerState.isVisible(), Modifier.align(Alignment.BottomCenter),
+        androidx.compose.animation.AnimatedVisibility(calls || barVisible || pickerState.isVisible(), Modifier.align(Alignment.BottomCenter),
           enter = fadeIn() + slideInVertically { it / 2 }, exit = fadeOut() + slideOutVertically { it / 2 }) {
           Box(Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(
             theme.background.copy(alpha = 0f), theme.background.copy(alpha = 0.12f), theme.background.copy(alpha = 0.41f)
           ))).navigationBarsPadding().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
             contentAlignment = Alignment.Center) {
             Box(Modifier.onSizeChanged { barHeight = with(density) { it.height.toDp() } }) {
-              ChatListTabBar(backdrop, filter.value == contacts, pickerState.isVisible(),
+              ChatListTabBar(backdrop, filter.value == contacts, calls, pickerState.isVisible(),
                 profileUnread = chatModel.users.any { !it.user.activeUser && !it.user.hidden && it.unreadCount > 0 },
                 onChats = { select(null) }, onContacts = { select(contacts) },
+                onCalls = { select(null); calls = true },
                 onProfile = { if (chatModel.users.isEmpty()) openSettings() else picker.value = AnimatedViewState.VISIBLE })
             }
           }

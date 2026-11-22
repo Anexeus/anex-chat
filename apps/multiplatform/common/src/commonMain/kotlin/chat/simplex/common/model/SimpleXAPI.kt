@@ -1206,6 +1206,13 @@ object ChatController {
     throw Exception("failed to test storage encryption: ${r.responseType} ${r.details}")
   }
 
+  suspend fun callHistoryPage(rh: Long?, userId: Long, before: Long?): List<AChatItem>? {
+    val pagination = if (before == null) ChatPagination.Last(50) else ChatPagination.Before(before, 50)
+    val result = sendCmd(rh, CC.CallHistoryPage(pagination), log = false)
+    val page = (result as? API.Result)?.res as? CR.HistoryItems ?: return null
+    return page.chatItems.takeIf { page.user.userId == userId }
+  }
+
   suspend fun apiGetChats(rh: Long?): List<Chat> {
     val userId = kotlin.runCatching { currentUserId("apiGetChats") }.getOrElse { return emptyList() }
     val r = sendCmd(rh, CC.ApiGetChats(userId))
@@ -4109,6 +4116,7 @@ sealed class CC {
   class ApiSaveSettings(val settings: AppSettings): CC()
   class ApiGetSettings(val settings: AppSettings): CC()
   class ApiGetChatTags(val userId: Long): CC()
+  class CallHistoryPage(val pagination: ChatPagination): CC()
   class ApiGetChats(val userId: Long): CC()
   class ApiGetChat(val type: ChatType, val id: Long, val scope: GroupChatScope?, val contentTag: MsgContentTag?, val pagination: ChatPagination, val search: String = ""): CC()
   class ApiGetChatContentTypes(val type: ChatType, val id: Long, val scope: GroupChatScope?): CC()
@@ -4307,6 +4315,7 @@ sealed class CC {
     is ApiSaveSettings -> "/_save app settings ${json.encodeToString(settings)}"
     is ApiGetSettings -> "/_get app settings ${json.encodeToString(settings)}"
     is ApiGetChatTags -> "/_get tags $userId"
+    is CallHistoryPage -> "/_get items ${pagination.cmdString} search=call:"
     is ApiGetChats -> "/_get chats $userId pcc=on"
     is ApiGetChat -> {
       val tag = if (contentTag == null) {
@@ -4526,6 +4535,7 @@ sealed class CC {
     is ApiSaveSettings -> "apiSaveSettings"
     is ApiGetSettings -> "apiGetSettings"
     is ApiGetChatTags -> "apiGetChatTags"
+    is CallHistoryPage -> "callHistoryPage"
     is ApiGetChats -> "apiGetChats"
     is ApiGetChat -> "apiGetChat"
     is ApiGetChatContentTypes -> "apiGetChatContentTypes"
@@ -6974,6 +6984,7 @@ sealed class CR {
   @Serializable @SerialName("groupMemberUpdated") class GroupMemberUpdated(val user: UserRef, val groupInfo: GroupInfo, val fromMember: GroupMember, val toMember: GroupMember): CR()
   @Serializable @SerialName("subscriptionStatus") class SubscriptionStatusEvt(val subscriptionStatus: SubscriptionStatus, val connections: List<String>): CR()
   @Serializable @SerialName("chatInfoUpdated") class ChatInfoUpdated(val user: UserRef, val chatInfo: ChatInfo): CR()
+  @Serializable @SerialName("chatItems") class HistoryItems(val user: UserRef, val chatItems: List<AChatItem>): CR()
   @Serializable @SerialName("newChatItems") class NewChatItems(val user: UserRef, val chatItems: List<AChatItem>): CR()
   @Serializable @SerialName("chatMsgContent") class ChatMsgContent(val user: UserRef, val msgContent: MsgContent): CR()
   @Serializable @SerialName("chatItemsStatusesUpdated") class ChatItemsStatusesUpdated(val user: UserRef, val chatItems: List<AChatItem>): CR()
@@ -7180,6 +7191,7 @@ sealed class CR {
     is GroupMemberUpdated -> "groupMemberUpdated"
     is SubscriptionStatusEvt -> "subscriptionStatus"
     is ChatInfoUpdated -> "chatInfoUpdated"
+    is HistoryItems -> "chatItems"
     is NewChatItems -> "newChatItems"
     is ChatMsgContent -> "chatMsgContent"
     is ChatItemsStatusesUpdated -> "chatItemsStatusesUpdated"
@@ -7376,6 +7388,7 @@ sealed class CR {
     is GroupMemberUpdated -> withUser(user, "groupInfo: $groupInfo\nfromMember: $fromMember\ntoMember: $toMember")
     is SubscriptionStatusEvt -> "subscriptionStatus $subscriptionStatus\nconnections: $connections"
     is ChatInfoUpdated -> withUser(user, json.encodeToString(chatInfo))
+    is HistoryItems -> withUser(user, "${chatItems.size} items")
     is NewChatItems -> withUser(user, chatItems.joinToString("\n") { json.encodeToString(it) })
     is ChatMsgContent -> withUser(user, msgContent.toString())
     is ChatItemsStatusesUpdated -> withUser(user, chatItems.joinToString("\n") { json.encodeToString(it) })

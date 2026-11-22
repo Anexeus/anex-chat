@@ -52,11 +52,12 @@ internal fun ChatListRoundButton(icon: ImageResource, description: String, glass
 
 @Composable
 internal fun ChatListTabBar(
-  backdrop: GlassBackdrop?, contacts: Boolean, profileOpen: Boolean, profileUnread: Boolean,
-  onChats: () -> Unit, onContacts: () -> Unit, onProfile: () -> Unit
+  backdrop: GlassBackdrop?, contacts: Boolean, calls: Boolean, profileOpen: Boolean, profileUnread: Boolean,
+  onChats: () -> Unit, onContacts: () -> Unit, onCalls: () -> Unit, onProfile: () -> Unit
 ) {
   val selected = when {
-    profileOpen -> 2
+    profileOpen -> 3
+    calls -> 2
     contacts -> 1
     else -> 0
   }
@@ -64,8 +65,8 @@ internal fun ChatListTabBar(
   val light = MaterialTheme.colors.isLight
   AnexGlassSurface(Modifier.widthIn(max = 360.dp).fillMaxWidth(), backdrop = backdrop, solid = backdrop == null) {
     BoxWithConstraints(Modifier.fillMaxWidth().padding(5.dp)) {
-      val segment = maxWidth / 3
-      val presses = remember { List(3) { MutableInteractionSource() } }
+      val segment = maxWidth / 4
+      val presses = remember { List(4) { MutableInteractionSource() } }
       val pressed = presses.map { it.collectIsPressedAsState().value }.indexOf(true)
       val hovered = presses.map { it.collectIsHoveredAsState().value }.indexOf(true)
       val active = if (pressed >= 0) pressed else hovered
@@ -95,12 +96,12 @@ internal fun ChatListTabBar(
       val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
       Row((glyphs?.capture(Modifier.fillMaxWidth()) ?: Modifier.fillMaxWidth()).selectableGroup().draggable(
         state = rememberDraggableState { delta ->
-          drag = ((drag ?: selected.toFloat()) + delta / segmentPx).coerceIn(0f, 2f)
+          drag = ((drag ?: selected.toFloat()) + delta / segmentPx).coerceIn(0f, 3f)
         },
         orientation = Orientation.Horizontal, reverseDirection = rtl,
         onDragStarted = { point ->
-          val index = (point.x / segmentPx - 0.5f).coerceIn(0f, 2f)
-          drag = if (rtl) 2f - index else index
+          val index = (point.x / segmentPx - 0.5f).coerceIn(0f, 3f)
+          drag = if (rtl) 3f - index else index
         },
         onDragStopped = {
           val destination = drag?.roundToInt()
@@ -108,7 +109,8 @@ internal fun ChatListTabBar(
           when (destination) {
             0 -> onChats()
             1 -> onContacts()
-            2 -> onProfile()
+            2 -> onCalls()
+            3 -> onProfile()
           }
         }
       )) {
@@ -125,7 +127,7 @@ internal fun ChatListTabBar(
           ) {
             Box {
               Icon(painterResource(icon), null, Modifier.size(22.dp), tint = ink)
-              if (index == 2 && profileUnread) {
+              if (index == 3 && profileUnread) {
                 Spacer(Modifier.align(Alignment.TopEnd).size(7.dp).background(MaterialTheme.colors.primary, CircleShape))
               }
             }
@@ -136,7 +138,8 @@ internal fun ChatListTabBar(
         }
         Tab(0, MR.images.ic_forum, stringResource(MR.strings.your_chats), onChats)
         Tab(1, MR.images.ic_group, stringResource(MR.strings.chat_list_contacts), onContacts)
-        Tab(2, MR.images.ic_account_circle_filled, stringResource(MR.strings.settings_section_title_you), onProfile)
+        Tab(2, MR.images.ic_call_500, "Calls", onCalls)
+        Tab(3, MR.images.ic_account_circle_filled, stringResource(MR.strings.settings_section_title_you), onProfile)
       }
       if (bendGlyphs) drawLens()
     }
