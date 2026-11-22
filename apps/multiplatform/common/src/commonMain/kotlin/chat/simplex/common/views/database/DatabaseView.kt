@@ -122,6 +122,20 @@ fun DatabaseLayout(
 
   ColumnWithScrollBar {
     AppBarTitle(stringResource(MR.strings.chat_data))
+    if (appPlatform.isAndroid) {
+      SectionView {
+        SettingsActionItem(painterResource(MR.images.ic_ios_share), "Back up chats", { showArchiveScreen(restore = false) }, disabled = operationsDisabled)
+        SettingsActionItem(painterResource(MR.images.ic_download), "Restore from backup", { showArchiveScreen(restore = true) }, disabled = operationsDisabled)
+        val setPassword = chatDbEncrypted == false || appPrefs.initialRandomDBPassphrase.state.value
+        SettingsActionItem(painterResource(MR.images.ic_lock), if (setPassword) "Set database passphrase" else "Change database passphrase", {
+          ModalManager.start.showModal(settingsGlass = true, cardScreen = true) { DatabaseEncryptionView(chatModel, false) }
+        }, disabled = operationsDisabled)
+      }
+      val last = appPrefs.lastSavedBackup.state.value
+      SectionTextFooter(last?.let { "Last backup: " + java.text.DateFormat.getDateTimeInstance().format(Date.from(it.toJavaInstant())) } ?: "No backup saved here yet.")
+      SectionTextFooter("The database passphrase unlocks all chats on this phone and in a backup. A hidden profile password only reveals that profile. Keep the passphrase safe. There is no password reset.")
+      SectionDividerSpaced()
+    }
 
     if (!chatModel.desktopNoUserNoRemote) {
       SectionView(stringResource(MR.strings.messages_section_title)) {
@@ -190,7 +204,7 @@ fun DatabaseManagementView() {
   val saveArchiveLauncher = rememberFileChooserLauncher(false) { to: URI? ->
     val archive = chatArchiveFile.value
     if (archive != null && to != null) {
-      copyFileToFile(File(archive), to) {}
+      if (copyFileToFile(File(archive), to) {} && appPlatform.isAndroid && m.chatDbEncrypted.value == true) prefs.lastSavedBackup.set(Clock.System.now())
     }
     // delete no matter the database was exported or canceled the export process
     if (archive != null) {
@@ -708,13 +722,27 @@ suspend fun importArchive(
   importedArchiveURI: URI,
   appFilesCountAndSize: MutableState<Pair<Int, Long>>,
   progressIndicator: MutableState<Boolean>,
-  migration: Boolean
+  migration: Boolean,
+  openAfterRestore: Boolean = false
 ): Boolean {
   val m = chatModel
   progressIndicator.value = true
   val archivePath = saveArchiveFromURI(importedArchiveURI)
   if (archivePath != null) {
     try {
+      if (openAfterRestore) {
+        val valid = runCatching {
+          java.util.zip.ZipFile(archivePath).use { zip ->
+            // Archive member names are fixed across platforms, unlike on-device database names.
+            listOf("simplex_v1_chat.db", "simplex_v1_agent.db").all { (zip.getEntry(it)?.size ?: 0L) > 0L }
+          }
+        }.getOrDefault(false)
+        if (!valid) {
+          progressIndicator.value = false
+          AlertManager.shared.showAlertMsg("Could not restore", "Choose a chat backup ZIP containing both databases.")
+          return false
+        }
+      }
       m.controller.apiDeleteStorage()
       wallpapersDir.mkdirs()
       try {
@@ -723,6 +751,18 @@ suspend fun importArchive(
         appPrefs.shouldImportAppSettings.set(true)
         DatabaseUtils.ksDatabasePassword.remove()
         appFilesCountAndSize.value = directoryFileCountAndSize(appFilesDir.absolutePath)
+        if (openAfterRestore) {
+          appPrefs.initialRandomDBPassphrase.set(false)
+          appPrefs.chatStopped.set(false)
+          appPrefs.onboardingStage.set(chat.simplex.common.views.onboarding.OnboardingStage.OnboardingComplete)
+          m.chatDbChanged.value = true
+          ModalManager.closeAllModalsEverywhere()
+          initChatController()
+          if (archiveErrors.isNotEmpty()) AlertManager.shared.showAlertMsg("Restored with missing files", "Some attachments could not be restored.")
+          m.chatDbChanged.value = false
+          progressIndicator.value = false
+          return true
+        }
         if (archiveErrors.isEmpty()) {
           operationEnded(m, progressIndicator) {
             AlertManager.shared.showAlertMsg(generalGetString(MR.strings.chat_database_imported), text = generalGetString(MR.strings.restart_the_app_to_use_imported_chat_database))

@@ -164,6 +164,9 @@ fun SimpleXInfoLayout(
       Column(Modifier.widthIn(max = if (appPlatform.isAndroid) 450.dp else 1000.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         if (onboardingStage != null) {
           OnboardingActionButton(user, onboardingStage)
+          if (appPlatform.isAndroid) TextButton(onClick = { chat.simplex.common.views.database.showArchiveScreen(restore = true) }) {
+            Text("Restore from backup")
+          }
         } else if (appPlatform.isAndroid) {
           val uriHandler = LocalUriHandler.current
           TextButton(onClick = { uriHandler.openExternalLink(ANEX_SOURCE_URL) }) {

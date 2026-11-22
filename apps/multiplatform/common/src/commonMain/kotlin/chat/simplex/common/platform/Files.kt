@@ -46,17 +46,21 @@ fun URI.toFile(): File =
   if (scheme == "file") File(this)
   else File(URLDecoder.decode(rawPath, "UTF-8").removePrefix("file:"))
 
-fun copyFileToFile(from: File, to: URI, finally: () -> Unit) {
-  try {
-    to.outputStream().use { stream ->
-      BufferedOutputStream(stream).use { outputStream ->
-        from.inputStream().use { it.copyTo(outputStream) }
-      }
-    }
+fun writeFileToUri(from: File, to: URI) {
+  to.outputStream().buffered().use { output ->
+    from.inputStream().use { it.copyTo(output) }
+  }
+}
+
+fun copyFileToFile(from: File, to: URI, finally: () -> Unit): Boolean {
+  return try {
+    writeFileToUri(from, to)
     showToast(generalGetString(MR.strings.file_saved))
+    true
   } catch (e: Throwable) {
     showToast(generalGetString(MR.strings.error_saving_file))
-    Log.e(TAG, "copyFileToFile error saving file $e")
+    Log.e(TAG, "copyFileToFile error saving file")
+    false
   } finally {
     finally()
   }

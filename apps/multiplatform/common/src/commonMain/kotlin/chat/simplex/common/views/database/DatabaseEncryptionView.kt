@@ -12,7 +12,6 @@ import androidx.compose.foundation.text.*
 import androidx.compose.material.*
 import androidx.compose.material.TextFieldDefaults.indicatorLine
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -50,8 +49,8 @@ fun DatabaseEncryptionView(m: ChatModel, migration: Boolean) {
   val keyStorage = remember(storedKey.value) { if (storedKey.value) DatabaseUtils.ksDatabasePassword.storage() else null }
   // Do not do rememberSaveable on current key to prevent saving it on disk in clear text
   val currentKey = remember { mutableStateOf(if (initialRandomDBPassphrase.value) DatabaseUtils.ksDatabasePassword.get() ?: "" else "") }
-  val newKey = rememberSaveable { mutableStateOf("") }
-  val confirmNewKey = rememberSaveable { mutableStateOf("") }
+  val newKey = remember { mutableStateOf("") }
+  val confirmNewKey = remember { mutableStateOf("") }
   val chatLastStart = remember { mutableStateOf(appPrefs.chatLastStart.get()) }
 
   Box(

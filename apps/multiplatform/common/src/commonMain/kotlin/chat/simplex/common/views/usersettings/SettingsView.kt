@@ -114,6 +114,7 @@ fun SettingsLayout(
       DatabaseItem(encrypted, passphraseSaved, showGlassSettingsModal { DatabaseView() }, stopped)
       SettingsActionItem(painterResource(MR.images.ic_ios_share), stringResource(MR.strings.migrate_from_device_to_another_device), { withAuth(generalGetString(MR.strings.auth_open_migration_to_another_device), generalGetString(MR.strings.auth_log_in_using_credential)) { ModalManager.fullscreen.showCustomModal { close -> MigrateFromDeviceView(close) } } }, disabled = stopped)
     }
+    if (appPlatform.isAndroid) SectionTextFooter("Migrate to another device moves your chats to a new phone. Use the profile on one phone at a time. Desktop linking is available separately.")
     SectionDividerSpaced()
 
     if (!appPlatform.isAndroid) {

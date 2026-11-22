@@ -9,7 +9,6 @@ import SectionView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import dev.icerock.moko.resources.compose.stringResource
 import androidx.compose.ui.unit.dp
@@ -63,8 +62,8 @@ private fun HiddenProfileLayout(
     }
     SectionSpacer()
 
-    val hidePassword = rememberSaveable { mutableStateOf("") }
-    val confirmHidePassword = rememberSaveable { mutableStateOf("") }
+    val hidePassword = remember { mutableStateOf("") }
+    val confirmHidePassword = remember { mutableStateOf("") }
     val passwordValid by remember { derivedStateOf { hidePassword.value == hidePassword.value.trim() } }
     val confirmValid by remember { derivedStateOf { confirmHidePassword.value == "" || hidePassword.value == confirmHidePassword.value } }
     val saveDisabled by remember { derivedStateOf { hidePassword.value == "" || !passwordValid || confirmHidePassword.value == "" || !confirmValid } }

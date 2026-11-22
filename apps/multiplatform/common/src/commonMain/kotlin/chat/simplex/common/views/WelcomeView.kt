@@ -284,6 +284,7 @@ private fun CreateFirstProfileMobile(chatModel: ChatModel, close: () -> Unit) {
         )
         Spacer(Modifier.height(DEFAULT_PADDING_HALF))
         ProfileNameField(displayName, stringResource(MR.strings.enter_profile_name), { it.trim() == mkValidName(it) }, focusRequester)
+        if (appPlatform.isAndroid) SectionTextFooter("One profile must stay visible. After adding a second profile, you can hide either one with a password.")
 
         Spacer(Modifier.weight(1f))
 
@@ -387,6 +388,18 @@ fun createProfileInProfiles(chatModel: ChatModel, displayName: String, shortDesc
       chatModel.controller.getUserChatData(rhId)
       close()
       if (readyForGuide) queueQuickGuide()
+      if (appPlatform.isAndroid && rhId == null && users.count { !it.user.hidden } > 1) {
+        AlertManager.shared.showAlertDialog(
+          title = "Protect this profile with a password?",
+          text = "Hide this profile until you enter its password in Your chat profiles. Your other visible profile stays available.",
+          confirmText = "Protect profile",
+          onConfirm = {
+            ModalManager.start.showModalCloseable(settings = true, glassNavigation = true) { done ->
+              chat.simplex.common.views.usersettings.HiddenProfileView(chatModel, user, done)
+            }
+          }
+        )
+      }
     }
   }
 }
